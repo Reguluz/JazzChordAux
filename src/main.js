@@ -55,6 +55,8 @@
     activeCategory: "全部",
     audioContext: null,
     scheduledNodes: [],
+    metronomeEnabled: false,
+    metronomeNodes: [],
     highlightTimers: [],
     stopTimer: null
   };
@@ -117,6 +119,7 @@
     playOriginalBtn: document.getElementById("playOriginalBtn"),
     playOptimizedBtn: document.getElementById("playOptimizedBtn"),
     stopBtn: document.getElementById("stopBtn"),
+    metronomeToggle: document.getElementById("metronomeToggle"),
     analyzeBtn: document.getElementById("analyzeBtn"),
     resetChoicesBtn: document.getElementById("resetChoicesBtn"),
     progressionInput: document.getElementById("progressionInput"),
@@ -322,6 +325,13 @@
     els.stopBtn.addEventListener("click", function () {
       stopPlayback();
       setStatus("停止播放");
+    });
+    els.metronomeToggle.addEventListener("change", function () {
+      state.metronomeEnabled = els.metronomeToggle.checked;
+      if (!state.metronomeEnabled) {
+        stopMetronomeNodes();
+      }
+      setStatus(state.metronomeEnabled ? "节拍器已开启，播放时生效" : "节拍器已关闭");
     });
 
     els.docSearch.addEventListener("input", renderTechniqueLibrary);
@@ -1705,6 +1715,9 @@
       var activeChordNames = activeOutput.map(function (item) {
         return item.symbol;
       }).join(" - ");
+      var blockCancel = isReplaced
+        ? '<button class="block-cancel-btn" type="button" data-adopt-index="' + index + '" data-option-id="' + escapeHtml(locked.id) + '" title="取消该替换">取消</button>'
+        : "";
 
       return [
         '<article class="progression-item ' + (isExpanded ? "active " : "") + (isReplaced ? "replaced" : "") + '" data-expand-index="' + index + '" data-slot-index="' + index + '" aria-expanded="' + (isExpanded ? "true" : "false") + '">',
@@ -1716,6 +1729,7 @@
         '<span class="progression-method"><span class="state-chip ' + (isReplaced ? "replaced-chip" : "original-chip") + '">' + activeType + '</span><span>' + escapeHtml(activeMethod) + '</span></span>',
         '<span class="progression-type">' + escapeHtml(activeCategory) + '</span>',
         '<span class="progression-chords">' + escapeHtml(activeChordNames) + '</span>',
+        blockCancel,
         '</article>'
       ].join("");
     }).join("");
@@ -1730,7 +1744,7 @@
         return [
           '<div class="choice-card ' + (isLocked ? "locked" : "") + '">',
           '<div class="choice-actions">',
-          '<button type="button" data-adopt-index="' + state.expandedHarmonyIndex + '" data-option-id="' + escapeHtml(choice.id) + '">' + (isLocked ? "已采用" : "采用") + '</button>',
+          '<button class="adopt-btn ' + (isLocked ? "adopted" : "") + '" type="button" data-adopt-index="' + state.expandedHarmonyIndex + '" data-option-id="' + escapeHtml(choice.id) + '" title="' + (isLocked ? "取消该方案" : "采用该方案") + '"><span class="adopt-default">' + (isLocked ? "已采用" : "采用") + '</span><span class="adopt-hover">取消</span></button>',
           '<button class="mini-play-btn" type="button" data-play-option-index="' + state.expandedHarmonyIndex + '" data-option-id="' + escapeHtml(choice.id) + '" title="预览该方案">▶</button>',
           '<button class="info-btn" type="button" data-explain-index="' + state.expandedHarmonyIndex + '" data-option-id="' + escapeHtml(choice.id) + '">i<span class="tooltip">' + escapeHtml(choice.summary) + '</span></button>',
           '</div>',
@@ -1809,7 +1823,7 @@
           return [
             '<div class="choice-card ' + (isLocked ? "locked" : "") + '">',
             '<div class="choice-actions">',
-            '<button type="button" data-arrange-adopt-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '">' + (isLocked ? "已采用" : "采用") + '</button>',
+            '<button class="adopt-btn ' + (isLocked ? "adopted" : "") + '" type="button" data-arrange-adopt-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '" title="' + (isLocked ? "取消该编配" : "采用该编配") + '"><span class="adopt-default">' + (isLocked ? "已采用" : "采用") + '</span><span class="adopt-hover">取消</span></button>',
             '<button class="mini-play-btn" type="button" data-arrange-play-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '" title="预览该编配">▶</button>',
             '<button class="info-btn" type="button" data-arrange-explain-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '">i<span class="tooltip">' + escapeHtml(choice.summary) + '</span></button>',
             '</div>',
@@ -2638,7 +2652,12 @@
 
     var ctx = ensureAudioContext();
     var beatSec = 60 / getTempo();
+    var totalBeats = events.reduce(function (sum, item) {
+      return sum + Math.max(0, Number(item.duration) || 0);
+    }, 0);
     var cursor = ctx.currentTime + 0.06;
+
+    scheduleMetronome(ctx, cursor, totalBeats, beatSec);
 
     events.forEach(function (item) {
       var chord = parseChord(item.symbol);
@@ -2667,6 +2686,7 @@
     var beatSec = 60 / getTempo();
     var startTime = ctx.currentTime + 0.06;
     var lastEnd = 0;
+    var lastEndBeat = 0;
 
     notes.forEach(function (note) {
       if (note.channel === 9) {
@@ -2677,11 +2697,41 @@
       var gain = Math.min(0.13, 0.05 + note.velocity / 1270);
       scheduleNote(ctx, note.midi, when, duration, gain);
       lastEnd = Math.max(lastEnd, note.startBeat * beatSec + duration);
+      lastEndBeat = Math.max(lastEndBeat, note.startBeat + note.duration);
     });
+
+    scheduleMetronome(ctx, startTime, lastEndBeat, beatSec);
 
     state.stopTimer = window.setTimeout(function () {
       setStatus("播放完成");
     }, Math.max(100, lastEnd * 1000 + 120));
+  }
+
+  function scheduleMetronome(ctx, startTime, totalBeats, beatSec) {
+    if (!state.metronomeEnabled || totalBeats <= 0) {
+      return;
+    }
+
+    var clickCount = Math.ceil(totalBeats);
+    for (var beat = 0; beat < clickCount; beat += 1) {
+      scheduleMetronomeClick(ctx, startTime + beat * beatSec, beat % 4 === 0);
+    }
+  }
+
+  function scheduleMetronomeClick(ctx, when, accented) {
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(accented ? 1320 : 920, when);
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.linearRampToValueAtTime(accented ? 0.18 : 0.11, when + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, when + 0.055);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(when);
+    osc.stop(when + 0.07);
+    state.metronomeNodes.push(osc);
   }
 
   function scheduleNote(ctx, midi, when, duration, peakGain) {
@@ -2708,6 +2758,7 @@
   }
 
   function stopPlayback() {
+    stopMetronomeNodes();
     state.scheduledNodes.forEach(function (node) {
       try {
         node.stop();
@@ -2721,6 +2772,17 @@
       state.stopTimer = null;
     }
     clearHighlights();
+  }
+
+  function stopMetronomeNodes() {
+    state.metronomeNodes.forEach(function (node) {
+      try {
+        node.stop();
+      } catch (error) {
+        // Oscillators that already stopped can be ignored.
+      }
+    });
+    state.metronomeNodes = [];
   }
 
   function scheduleHighlight(index, delayMs, durationMs, arrangeIndex) {

@@ -11,58 +11,65 @@
       <div class="brand-block">
         <p class="eyebrow">Jazz Chords Aux Master</p>
         <h1>爵士和弦助手</h1>
-        <div class="playback-controls" aria-label="播放控制">
-          <button id="playOriginalBtn" type="button" class="playback-btn original-play" title="播放原始输入">
-            <span class="btn-icon" aria-hidden="true">▶</span>
-            原始
-          </button>
-          <button id="playOptimizedBtn" type="button" class="playback-btn optimized-play" title="播放已选优化">
-            <span class="btn-icon" aria-hidden="true">◆</span>
-            优化
-          </button>
-          <button id="stopBtn" type="button" class="playback-btn stop-play" title="停止播放">
-            <span class="btn-icon" aria-hidden="true">■</span>
-            停止
-          </button>
+        <div class="command-row">
+          <div class="playback-controls" aria-label="播放控制">
+            <button id="playOriginalBtn" type="button" class="playback-btn original-play" title="播放原始输入">
+              <span class="btn-icon" aria-hidden="true">▶</span>
+              原始
+            </button>
+            <button id="playOptimizedBtn" type="button" class="playback-btn optimized-play" title="播放已选优化">
+              <span class="btn-icon" aria-hidden="true">◆</span>
+              优化
+            </button>
+            <button id="stopBtn" type="button" class="playback-btn stop-play" title="停止播放">
+              <span class="btn-icon" aria-hidden="true">■</span>
+              停止
+            </button>
+            <label class="metronome-switch" title="播放时加入节拍器">
+              <input id="metronomeToggle" type="checkbox">
+              <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+              <span>节拍器</span>
+            </label>
+          </div>
+          <div class="transport">
+            <label>
+              调性
+              <select id="keySelect" aria-label="调性选择">
+                <option value="auto">Auto</option>
+                <option value="C">C</option>
+                <option value="Db">Db</option>
+                <option value="D">D</option>
+                <option value="Eb">Eb</option>
+                <option value="E">E</option>
+                <option value="F">F</option>
+                <option value="Gb">Gb</option>
+                <option value="G">G</option>
+                <option value="Ab">Ab</option>
+                <option value="A">A</option>
+                <option value="Bb">Bb</option>
+                <option value="B">B</option>
+              </select>
+            </label>
+            <label>
+              调式
+              <select id="modeSelect" aria-label="调式选择">
+                <option value="auto">Auto</option>
+                <option value="ionian">Ionian / 大调</option>
+                <option value="dorian">Dorian</option>
+                <option value="phrygian">Phrygian</option>
+                <option value="lydian">Lydian</option>
+                <option value="mixolydian">Mixolydian</option>
+                <option value="aeolian">Aeolian / 小调</option>
+                <option value="harmonicMinor">Harmonic minor</option>
+                <option value="locrian">Locrian</option>
+              </select>
+            </label>
+            <label>
+              BPM
+              <input id="tempoInput" type="number" min="48" max="220" value="96">
+            </label>
+          </div>
         </div>
-      </div>
-      <div class="transport">
-        <label>
-          调性
-          <select id="keySelect" aria-label="调性选择">
-            <option value="auto">Auto</option>
-            <option value="C">C</option>
-            <option value="Db">Db</option>
-            <option value="D">D</option>
-            <option value="Eb">Eb</option>
-            <option value="E">E</option>
-            <option value="F">F</option>
-            <option value="Gb">Gb</option>
-            <option value="G">G</option>
-            <option value="Ab">Ab</option>
-            <option value="A">A</option>
-            <option value="Bb">Bb</option>
-            <option value="B">B</option>
-          </select>
-        </label>
-        <label>
-          调式
-          <select id="modeSelect" aria-label="调式选择">
-            <option value="auto">Auto</option>
-            <option value="ionian">Ionian / 大调</option>
-            <option value="dorian">Dorian</option>
-            <option value="phrygian">Phrygian</option>
-            <option value="lydian">Lydian</option>
-            <option value="mixolydian">Mixolydian</option>
-            <option value="aeolian">Aeolian / 小调</option>
-            <option value="harmonicMinor">Harmonic minor</option>
-            <option value="locrian">Locrian</option>
-          </select>
-        </label>
-        <label>
-          BPM
-          <input id="tempoInput" type="number" min="48" max="220" value="96">
-        </label>
       </div>
     </header>
 

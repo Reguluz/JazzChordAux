@@ -80,8 +80,8 @@ button.ghost:hover {
 
 .app-header {
   display: flex;
-  align-items: end;
-  justify-content: space-between;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 24px;
   padding: 24px clamp(16px, 3vw, 36px) 18px;
 }
@@ -89,10 +89,19 @@ button.ghost:hover {
 .brand-block {
   display: grid;
   gap: 10px;
+  width: 100%;
+}
+
+.command-row {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .playback-controls {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: 9px;
 }
@@ -137,6 +146,65 @@ button.ghost:hover {
   background: #7f2942;
 }
 
+.metronome-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 850;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.metronome-switch:hover {
+  background: #f7f5f0;
+  border-color: rgba(197, 107, 53, 0.45);
+}
+
+.metronome-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.switch-track {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: #d8d2c7;
+  transition: background 0.16s ease;
+}
+
+.switch-thumb {
+  position: absolute;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(31, 34, 42, 0.2);
+  transition: transform 0.16s ease;
+}
+
+.metronome-switch input:checked + .switch-track {
+  background: var(--warm);
+}
+
+.metronome-switch input:checked + .switch-track .switch-thumb {
+  transform: translateX(18px);
+}
+
 .eyebrow {
   margin: 0 0 4px;
   color: var(--accent-strong);
@@ -173,7 +241,7 @@ h3 {
   display: flex;
   align-items: end;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 10px;
 }
 
@@ -573,6 +641,7 @@ code {
 .progression-item.replaced {
   background: #f5fbfa;
   border-color: rgba(13, 119, 112, 0.46);
+  padding-bottom: 38px;
 }
 
 .progression-item.playing {
