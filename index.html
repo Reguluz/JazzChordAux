@@ -8,9 +8,23 @@
   </head>
   <body>
     <header class="app-header">
-      <div>
+      <div class="brand-block">
         <p class="eyebrow">Jazz Chords Aux Master</p>
         <h1>爵士和弦助手</h1>
+        <div class="playback-controls" aria-label="播放控制">
+          <button id="playOriginalBtn" type="button" class="playback-btn original-play" title="播放原始输入">
+            <span class="btn-icon" aria-hidden="true">▶</span>
+            原始
+          </button>
+          <button id="playOptimizedBtn" type="button" class="playback-btn optimized-play" title="播放已选优化">
+            <span class="btn-icon" aria-hidden="true">◆</span>
+            优化
+          </button>
+          <button id="stopBtn" type="button" class="playback-btn stop-play" title="停止播放">
+            <span class="btn-icon" aria-hidden="true">■</span>
+            停止
+          </button>
+        </div>
       </div>
       <div class="transport">
         <label>
@@ -49,9 +63,6 @@
           BPM
           <input id="tempoInput" type="number" min="48" max="220" value="96">
         </label>
-        <button id="playOriginalBtn" type="button" title="播放原始输入">原始</button>
-        <button id="playOptimizedBtn" type="button" title="播放已选优化">优化</button>
-        <button id="stopBtn" type="button" class="ghost" title="停止播放">停止</button>
       </div>
     </header>
 
@@ -62,18 +73,20 @@
             <p class="eyebrow">Input</p>
             <h2 id="inputTitle">输入和声走向</h2>
           </div>
-          <button id="analyzeBtn" type="button">分析</button>
         </div>
 
-        <textarea id="progressionInput" spellcheck="false">C:4 | Am:4 | Dm:4 | G7:4 | C:4</textarea>
+        <div class="input-compose">
+          <div class="input-actions">
+            <button id="analyzeBtn" type="button" class="analyze-action">分析</button>
+            <label class="file-drop">
+              <input id="midiInput" type="file" accept=".mid,.midi,audio/midi">
+              <span>提交 MIDI</span>
+              <strong id="midiFileName">选择 .mid/.midi 文件</strong>
+            </label>
+            <button id="resetChoicesBtn" type="button" class="ghost">清空选择</button>
+          </div>
 
-        <div class="mini-grid">
-          <label class="file-drop">
-            <input id="midiInput" type="file" accept=".mid,.midi,audio/midi">
-            <span>提交 MIDI</span>
-            <strong id="midiFileName">选择 .mid/.midi 文件</strong>
-          </label>
-          <button id="resetChoicesBtn" type="button" class="ghost">清空选择</button>
+          <textarea id="progressionInput" spellcheck="false">C:4 | Am:4 | Dm:4 | G7:4 | C:4</textarea>
         </div>
 
         <div class="parsed-panel">

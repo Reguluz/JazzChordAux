@@ -202,6 +202,18 @@
     });
 
     els.timeline.addEventListener("click", function (event) {
+      var slotPlayButton = event.target.closest("[data-play-slot-index]");
+      if (slotPlayButton) {
+        playHarmonySlotPreview(Number(slotPlayButton.dataset.playSlotIndex));
+        return;
+      }
+
+      var optionPlayButton = event.target.closest("[data-play-option-index]");
+      if (optionPlayButton) {
+        playHarmonyOptionPreview(Number(optionPlayButton.dataset.playOptionIndex), optionPlayButton.dataset.optionId);
+        return;
+      }
+
       var explainButton = event.target.closest("[data-explain-index]");
       if (explainButton) {
         var explainIndex = Number(explainButton.dataset.explainIndex);
@@ -247,6 +259,18 @@
     });
 
     els.arrangementPanel.addEventListener("click", function (event) {
+      var arrangeCurrentPlayButton = event.target.closest("[data-arrange-current-play-index]");
+      if (arrangeCurrentPlayButton) {
+        playArrangementCurrentPreview(Number(arrangeCurrentPlayButton.dataset.arrangeCurrentPlayIndex));
+        return;
+      }
+
+      var arrangePlayButton = event.target.closest("[data-arrange-play-index]");
+      if (arrangePlayButton) {
+        playArrangementOptionPreview(Number(arrangePlayButton.dataset.arrangePlayIndex), arrangePlayButton.dataset.optionId);
+        return;
+      }
+
       var explainButton = event.target.closest("[data-arrange-explain-index]");
       if (explainButton) {
         var explainIndex = Number(explainButton.dataset.arrangeExplainIndex);
@@ -1641,10 +1665,10 @@
       li.dataset.slotRow = String(index);
       var degree = degreeForChord(slot.chord, context);
       li.innerHTML = [
+        '<span class="parsed-number">位置 ' + (index + 1) + '</span>',
         '<div class="parsed-editor">',
-        '<span class="parsed-number">' + (index + 1) + '</span>',
-        '<input data-slot-edit="symbol" aria-label="位置 ' + (index + 1) + ' 和弦" value="' + escapeHtml(slot.symbol) + '">',
-        '<input data-slot-edit="duration" aria-label="位置 ' + (index + 1) + ' 时值" type="number" min="0.25" step="0.25" value="' + escapeHtml(formatBeats(slot.duration)) + '">',
+        '<label class="parsed-field"><span>和弦</span><input data-slot-edit="symbol" aria-label="位置 ' + (index + 1) + ' 和弦" value="' + escapeHtml(slot.symbol) + '"></label>',
+        '<label class="parsed-field"><span>时值</span><input data-slot-edit="duration" aria-label="位置 ' + (index + 1) + ' 时值" type="number" min="0.25" step="0.25" value="' + escapeHtml(formatBeats(slot.duration)) + '"></label>',
         '</div>',
         '<span class="degree-pill ' + (degree.inMode ? "" : "outside") + '" title="' + escapeHtml(degree.hint) + '">' + escapeHtml(degree.roman) + '</span>'
       ].join("");
@@ -1683,7 +1707,8 @@
       }).join(" - ");
 
       return [
-        '<button class="progression-item ' + (isExpanded ? "active " : "") + (isReplaced ? "replaced" : "") + '" type="button" data-expand-index="' + index + '" data-slot-index="' + index + '" aria-expanded="' + (isExpanded ? "true" : "false") + '">',
+        '<article class="progression-item ' + (isExpanded ? "active " : "") + (isReplaced ? "replaced" : "") + '" data-expand-index="' + index + '" data-slot-index="' + index + '" aria-expanded="' + (isExpanded ? "true" : "false") + '">',
+        '<button class="mini-play-btn block-play-btn" type="button" data-play-slot-index="' + index + '" title="预览当前位置">▶</button>',
         '<span class="progression-index">#' + (index + 1) + '</span>',
         '<span class="progression-line"><span class="tiny-label">原</span><strong>' + escapeHtml(slot.symbol) + '</strong></span>',
         '<span class="degree-pill ' + (slotDegree.inMode ? "" : "outside") + '" title="' + escapeHtml(slotDegree.hint) + '">' + escapeHtml(slotDegree.roman) + '</span>',
@@ -1691,7 +1716,7 @@
         '<span class="progression-method"><span class="state-chip ' + (isReplaced ? "replaced-chip" : "original-chip") + '">' + activeType + '</span><span>' + escapeHtml(activeMethod) + '</span></span>',
         '<span class="progression-type">' + escapeHtml(activeCategory) + '</span>',
         '<span class="progression-chords">' + escapeHtml(activeChordNames) + '</span>',
-        '</button>'
+        '</article>'
       ].join("");
     }).join("");
 
@@ -1704,13 +1729,14 @@
         var isLocked = selectedLocked && selectedLocked.id === choice.id;
         return [
           '<div class="choice-card ' + (isLocked ? "locked" : "") + '">',
+          '<div class="choice-actions">',
+          '<button type="button" data-adopt-index="' + state.expandedHarmonyIndex + '" data-option-id="' + escapeHtml(choice.id) + '">' + (isLocked ? "已采用" : "采用") + '</button>',
+          '<button class="mini-play-btn" type="button" data-play-option-index="' + state.expandedHarmonyIndex + '" data-option-id="' + escapeHtml(choice.id) + '" title="预览该方案">▶</button>',
+          '<button class="info-btn" type="button" data-explain-index="' + state.expandedHarmonyIndex + '" data-option-id="' + escapeHtml(choice.id) + '">i<span class="tooltip">' + escapeHtml(choice.summary) + '</span></button>',
+          '</div>',
           '<div>',
           '<div class="choice-title"><span>' + escapeHtml(choice.title) + '</span><span class="tag">' + escapeHtml(choice.category) + '</span></div>',
           '<div class="choice-output">' + displaySequence(choice.output, context) + '</div>',
-          '</div>',
-          '<div class="choice-actions">',
-          '<button class="info-btn" type="button" data-explain-index="' + state.expandedHarmonyIndex + '" data-option-id="' + escapeHtml(choice.id) + '">i<span class="tooltip">' + escapeHtml(choice.summary) + '</span></button>',
-          '<button type="button" data-adopt-index="' + state.expandedHarmonyIndex + '" data-option-id="' + escapeHtml(choice.id) + '">' + (isLocked ? "已采用" : "采用") + '</button>',
           '</div>',
           '</div>'
         ].join("");
@@ -1774,21 +1800,22 @@
       card.dataset.arrangeIndex = String(index);
 
       var selectedLine = locked
-        ? '<strong>' + escapeHtml(locked.outputSymbol || item.symbol) + '</strong><span class="voicing-badge">' + escapeHtml(locked.title) + '</span><button class="ghost" type="button" data-arrange-adopt-index="' + index + '" data-option-id="' + escapeHtml(locked.id) + '">取消</button>'
-        : '<span>当前使用根位/默认排列</span>';
+        ? '<button class="mini-play-btn" type="button" data-arrange-current-play-index="' + index + '" title="预览当前编配">▶</button><strong>' + escapeHtml(locked.outputSymbol || item.symbol) + '</strong><span class="voicing-badge">' + escapeHtml(locked.title) + '</span><button class="ghost" type="button" data-arrange-adopt-index="' + index + '" data-option-id="' + escapeHtml(locked.id) + '">取消</button>'
+        : '<button class="mini-play-btn" type="button" data-arrange-current-play-index="' + index + '" title="预览当前编配">▶</button><span>当前使用根位/默认排列</span>';
 
       var choicesHtml = options.length
         ? options.map(function (choice) {
           var isLocked = locked && locked.id === choice.id;
           return [
             '<div class="choice-card ' + (isLocked ? "locked" : "") + '">',
+            '<div class="choice-actions">',
+            '<button type="button" data-arrange-adopt-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '">' + (isLocked ? "已采用" : "采用") + '</button>',
+            '<button class="mini-play-btn" type="button" data-arrange-play-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '" title="预览该编配">▶</button>',
+            '<button class="info-btn" type="button" data-arrange-explain-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '">i<span class="tooltip">' + escapeHtml(choice.summary) + '</span></button>',
+            '</div>',
             '<div>',
             '<div class="choice-title"><span>' + escapeHtml(choice.title) + '</span><span class="tag">' + escapeHtml(choice.category) + '</span></div>',
             '<div class="choice-output">' + escapeHtml(choice.outputLabel) + '</div>',
-            '</div>',
-            '<div class="choice-actions">',
-            '<button class="info-btn" type="button" data-arrange-explain-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '">i<span class="tooltip">' + escapeHtml(choice.summary) + '</span></button>',
-            '<button type="button" data-arrange-adopt-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '">' + (isLocked ? "已采用" : "采用") + '</button>',
             '</div>',
             '</div>'
           ].join("");
@@ -2530,6 +2557,66 @@
     }
     playChordEvents(computeArrangedEvents());
     setStatus(Object.keys(state.arrangementChoices).length ? "播放优化+编配走向" : "播放优化走向");
+  }
+
+  function playHarmonySlotPreview(index) {
+    if (!state.slots[index]) {
+      return;
+    }
+    stopPlayback();
+    var locked = state.lockedChoices[index];
+    var output = locked ? locked.output : [event(state.slots[index].symbol, state.slots[index].duration)];
+    playChordEvents(output.map(function (item) {
+      return {
+        symbol: item.symbol,
+        duration: item.duration,
+        originIndex: index
+      };
+    }));
+    setStatus("预览位置 " + (index + 1));
+  }
+
+  function playHarmonyOptionPreview(index, optionId) {
+    var option = findOption(index, optionId);
+    if (!option) {
+      return;
+    }
+    stopPlayback();
+    playChordEvents(option.output.map(function (item) {
+      return {
+        symbol: item.symbol,
+        duration: item.duration,
+        originIndex: index
+      };
+    }));
+    setStatus("预览方案：" + option.title);
+  }
+
+  function playArrangementOptionPreview(index, optionId) {
+    var option = findArrangementOption(index, optionId);
+    var base = computeOptimizedEvents()[index];
+    if (!option || !base) {
+      return;
+    }
+    stopPlayback();
+    playChordEvents([{
+      symbol: option.outputSymbol || base.symbol,
+      duration: base.duration,
+      originIndex: base.originIndex,
+      arrangeIndex: index,
+      voicingMode: option.voicingMode || "closed"
+    }]);
+    setStatus("预览编配：" + option.title);
+  }
+
+  function playArrangementCurrentPreview(index) {
+    var item = computeArrangedEvents()[index];
+    if (!item) {
+      return;
+    }
+    stopPlayback();
+    playChordEvents([item]);
+    setStatus("预览当前编配位置 " + (index + 1));
   }
 
   function ensureAudioContext() {

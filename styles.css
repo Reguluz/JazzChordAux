@@ -86,6 +86,57 @@ button.ghost:hover {
   padding: 24px clamp(16px, 3vw, 36px) 18px;
 }
 
+.brand-block {
+  display: grid;
+  gap: 10px;
+}
+
+.playback-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.playback-btn {
+  border-radius: 8px;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 850;
+  min-height: 46px;
+  min-width: 104px;
+  padding: 0 18px;
+}
+
+.playback-btn .btn-icon {
+  display: inline-flex;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.original-play {
+  background: var(--cool);
+}
+
+.original-play:hover {
+  background: #2c4f88;
+}
+
+.optimized-play {
+  background: var(--accent);
+}
+
+.optimized-play:hover {
+  background: var(--accent-strong);
+}
+
+.stop-play {
+  background: var(--rose);
+}
+
+.stop-play:hover {
+  background: #7f2942;
+}
+
 .eyebrow {
   margin: 0 0 4px;
   color: var(--accent-strong);
@@ -222,7 +273,8 @@ h3 {
 
 textarea {
   width: 100%;
-  min-height: 78px;
+  height: 118px;
+  min-height: 92px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
@@ -232,11 +284,26 @@ textarea {
   line-height: 1.42;
 }
 
-.mini-grid {
+.input-compose {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(190px, 0.26fr) minmax(360px, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.input-actions {
+  display: grid;
+  grid-template-rows: 38px minmax(0, 1fr) 34px;
   gap: 7px;
-  margin-top: 8px;
+}
+
+.input-actions button {
+  min-height: 34px;
+}
+
+.analyze-action {
+  justify-content: flex-start;
+  padding-left: 13px;
 }
 
 .file-drop {
@@ -247,7 +314,8 @@ textarea {
   display: grid;
   gap: 3px;
   padding: 7px 10px;
-  min-height: 46px;
+  min-height: 0;
+  align-content: center;
 }
 
 .file-drop.drag-over {
@@ -309,27 +377,39 @@ code {
 
 .parsed-list {
   display: grid;
-  gap: 5px;
-  max-height: 112px;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 6px;
+  max-height: 142px;
   overflow: auto;
 }
 
 .parsed-list li {
   border: 1px solid var(--line);
   border-radius: 7px;
-  padding: 6px 8px;
+  padding: 7px 8px;
   background: #fff;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 7px;
-  align-items: center;
+  gap: 6px;
+  align-items: stretch;
 }
 
 .parsed-editor {
   display: grid;
-  grid-template-columns: 24px minmax(76px, 1fr) 58px;
+  grid-template-columns: 1fr;
   gap: 5px;
-  align-items: center;
+  align-items: stretch;
+}
+
+.parsed-field {
+  display: grid;
+  gap: 3px;
+}
+
+.parsed-field span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 850;
+  text-transform: uppercase;
 }
 
 .parsed-editor input {
@@ -467,12 +547,14 @@ code {
   border-radius: 8px;
   background: #fff;
   color: var(--ink);
+  cursor: pointer;
   display: grid;
   align-content: start;
   gap: 5px;
   justify-content: stretch;
   min-height: 154px;
   padding: 8px;
+  position: relative;
   text-align: left;
   transform: none;
 }
@@ -501,6 +583,7 @@ code {
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 900;
+  padding-right: 28px;
 }
 
 .progression-line,
@@ -862,7 +945,7 @@ code {
   border-radius: 8px;
   padding: 7px 8px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 7px;
   align-items: center;
   background: #fbfdfd;
@@ -900,7 +983,32 @@ code {
 .choice-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 5px;
+}
+
+.mini-play-btn {
+  width: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-color: rgba(62, 101, 168, 0.22);
+  background: #edf2fb;
+  color: #2d4f86;
+  font-weight: 900;
+}
+
+.mini-play-btn:hover {
+  background: #dbe7fb;
+  color: #203f74;
+}
+
+.block-play-btn {
+  position: absolute;
+  right: 7px;
+  top: 7px;
+  width: 30px;
+  min-height: 30px;
+  z-index: 2;
 }
 
 .info-btn {
@@ -1133,6 +1241,14 @@ code {
   .options-board-head {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .input-compose {
+    grid-template-columns: 1fr;
+  }
+
+  .input-actions {
+    grid-template-rows: auto;
   }
 
   .mini-grid,
