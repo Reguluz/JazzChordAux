@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Jazz Chords Aux Master</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Jazz Chords Aux Master</p>
+        <h1>爵士和弦助手</h1>
+      </div>
+      <div class="transport">
+        <label>
+          调性
+          <select id="keySelect" aria-label="调性选择">
+            <option value="auto">Auto</option>
+            <option value="C">C</option>
+            <option value="Db">Db</option>
+            <option value="D">D</option>
+            <option value="Eb">Eb</option>
+            <option value="E">E</option>
+            <option value="F">F</option>
+            <option value="Gb">Gb</option>
+            <option value="G">G</option>
+            <option value="Ab">Ab</option>
+            <option value="A">A</option>
+            <option value="Bb">Bb</option>
+            <option value="B">B</option>
+          </select>
+        </label>
+        <label>
+          调式
+          <select id="modeSelect" aria-label="调式选择">
+            <option value="auto">Auto</option>
+            <option value="ionian">Ionian / 大调</option>
+            <option value="dorian">Dorian</option>
+            <option value="phrygian">Phrygian</option>
+            <option value="lydian">Lydian</option>
+            <option value="mixolydian">Mixolydian</option>
+            <option value="aeolian">Aeolian / 小调</option>
+            <option value="harmonicMinor">Harmonic minor</option>
+            <option value="locrian">Locrian</option>
+          </select>
+        </label>
+        <label>
+          BPM
+          <input id="tempoInput" type="number" min="48" max="220" value="96">
+        </label>
+        <button id="playOriginalBtn" type="button" title="播放原始输入">原始</button>
+        <button id="playOptimizedBtn" type="button" title="播放已选优化">优化</button>
+        <button id="stopBtn" type="button" class="ghost" title="停止播放">停止</button>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="input-panel" aria-labelledby="inputTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Input</p>
+            <h2 id="inputTitle">输入和声走向</h2>
+          </div>
+          <button id="analyzeBtn" type="button">分析</button>
+        </div>
+
+        <textarea id="progressionInput" spellcheck="false">C:4 | Am:4 | Dm:4 | G7:4 | C:4</textarea>
+
+        <div class="mini-grid">
+          <label class="file-drop">
+            <input id="midiInput" type="file" accept=".mid,.midi,audio/midi">
+            <span>提交 MIDI</span>
+            <strong id="midiFileName">选择 .mid/.midi 文件</strong>
+          </label>
+          <button id="resetChoicesBtn" type="button" class="ghost">清空选择</button>
+        </div>
+
+        <div class="parsed-panel">
+          <div class="section-heading small">
+            <div>
+              <h3>识别结果</h3>
+              <span id="analysisMeta">未分析</span>
+            </div>
+            <button id="applyParsedEditsBtn" type="button" class="ghost">应用修改</button>
+          </div>
+          <ol id="parsedList" class="parsed-list"></ol>
+        </div>
+      </section>
+
+      <section class="workspace-panel" aria-labelledby="workspaceTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Workflow</p>
+            <h2 id="workspaceTitle">优化方案工作台</h2>
+          </div>
+          <span id="statusBadge" class="status-badge">Ready</span>
+        </div>
+        <div class="workflow-tabs" role="tablist" aria-label="工作流程">
+          <button id="harmonyStepBtn" type="button" class="active" data-workflow-step="harmony">1. 和声重配</button>
+          <button id="arrangementStepBtn" type="button" data-workflow-step="arrangement">2. 转位编配</button>
+        </div>
+        <div id="timeline" class="timeline workflow-pane active" data-workflow-pane="harmony" aria-live="polite"></div>
+        <div id="arrangementPanel" class="arrangement-panel workflow-pane" data-workflow-pane="arrangement" aria-live="polite"></div>
+        <div class="workflow-nav">
+          <button id="workflowPrevBtn" type="button" class="ghost">上一步</button>
+          <button id="workflowNextBtn" type="button">下一步</button>
+        </div>
+      </section>
+
+      <aside class="docs-panel" aria-labelledby="docsTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Technique Library</p>
+            <h2 id="docsTitle">技法文档</h2>
+          </div>
+          <a class="doc-link" href="docs/harmony-techniques.md" target="_blank" rel="noreferrer">打开文档</a>
+        </div>
+        <input id="docSearch" class="doc-search" type="search" placeholder="搜索技法、条件、输出">
+        <div id="categoryTabs" class="category-tabs" role="tablist" aria-label="技法分组"></div>
+        <div id="techniqueDocs" class="technique-docs"></div>
+      </aside>
+    </main>
+
+    <dialog id="explainDialog" class="explain-dialog">
+      <button id="closeDialogBtn" class="dialog-close" type="button" aria-label="关闭">×</button>
+      <div id="dialogContent"></div>
+    </dialog>
+
+    <script src="src/main.js"></script>
+  </body>
+</html>
