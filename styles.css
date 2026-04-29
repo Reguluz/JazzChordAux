@@ -361,7 +361,7 @@ textarea {
 
 .input-actions {
   display: grid;
-  grid-template-rows: 38px minmax(0, 1fr) 34px;
+  grid-template-rows: 38px auto minmax(0, 1fr) 34px;
   gap: 7px;
 }
 
@@ -372,6 +372,35 @@ textarea {
 .analyze-action {
   justify-content: flex-start;
   padding-left: 13px;
+}
+
+.preset-import {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: end;
+}
+
+.preset-import label {
+  color: var(--muted);
+  display: grid;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.preset-import select {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  min-height: 34px;
+  min-width: 0;
+  padding: 0 9px;
+}
+
+.preset-import button {
+  padding: 0 10px;
 }
 
 .file-drop {
@@ -1056,6 +1085,34 @@ code {
   gap: 5px;
 }
 
+.adopt-btn {
+  min-width: 64px;
+}
+
+.adopt-btn.adopted {
+  border-color: rgba(13, 119, 112, 0.5);
+  background: #e5f5f2;
+  color: var(--accent-strong);
+}
+
+.adopt-btn .adopt-hover {
+  display: none;
+}
+
+.adopt-btn.adopted:hover {
+  border-color: var(--warm);
+  background: var(--warm);
+  color: #fff;
+}
+
+.adopt-btn.adopted:hover .adopt-default {
+  display: none;
+}
+
+.adopt-btn.adopted:hover .adopt-hover {
+  display: inline;
+}
+
 .mini-play-btn {
   width: 34px;
   min-height: 34px;
@@ -1078,6 +1135,25 @@ code {
   width: 30px;
   min-height: 30px;
   z-index: 2;
+}
+
+.block-cancel-btn {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  min-height: 28px;
+  padding: 0 9px;
+  border-color: rgba(197, 107, 53, 0.36);
+  background: #fff7f1;
+  color: #89451f;
+  font-size: 0.72rem;
+  font-weight: 900;
+  z-index: 2;
+}
+
+.block-cancel-btn:hover {
+  background: var(--warm);
+  color: #fff;
 }
 
 .info-btn {

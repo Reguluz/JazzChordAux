@@ -40,6 +40,18 @@
   };
   var MODE_ORDER = ["ionian", "aeolian", "dorian", "mixolydian", "harmonicMinor", "lydian", "phrygian", "locrian"];
   var MAJOR_DEGREE_NAMES = ["I", "bII", "II", "bIII", "III", "IV", "#IV", "V", "bVI", "VI", "bVII", "VII"];
+  var PROGRESSION_PRESETS = [
+    { id: "pop-1564", label: "流行 I-vi-IV-V", key: "C", mode: "ionian", progression: "C:4 | Am:4 | F:4 | G:4" },
+    { id: "pop-1564-var", label: "流行 I-V-vi-IV", key: "C", mode: "ionian", progression: "C:4 | G:4 | Am:4 | F:4" },
+    { id: "jpop-4536", label: "王道 IV-V-iii-vi", key: "C", mode: "ionian", progression: "F:4 | G:4 | Em:4 | Am:4" },
+    { id: "turnaround-1625", label: "Turnaround I-vi-ii-V", key: "C", mode: "ionian", progression: "C:4 | Am:4 | Dm:4 | G7:4" },
+    { id: "jazz-251", label: "爵士 ii-V-I", key: "C", mode: "ionian", progression: "Dm:4 | G7:4 | C:4" },
+    { id: "jazz-36251", label: "爵士 iii-vi-ii-V-I", key: "C", mode: "ionian", progression: "Em:4 | A7:4 | Dm:4 | G7:4 | C:4" },
+    { id: "minor-251", label: "小调 iiø-V-i", key: "A", mode: "harmonicMinor", progression: "Bm7b5:4 | E7:4 | Am:4" },
+    { id: "andalusian", label: "小调 i-bVII-bVI-V", key: "A", mode: "harmonicMinor", progression: "Am:4 | G:4 | F:4 | E:4" },
+    { id: "canon", label: "卡农 I-V-vi-iii-IV-I-IV-V", key: "C", mode: "ionian", progression: "C:4 | G:4 | Am:4 | Em:4 | F:4 | C:4 | F:4 | G:4" },
+    { id: "blues-12bar", label: "12 小节布鲁斯", key: "C", mode: "mixolydian", progression: "C7:4 | C7:4 | C7:4 | C7:4 | F7:4 | F7:4 | C7:4 | C7:4 | G7:4 | F7:4 | C7:4 | G7:4" }
+  ];
 
   var state = {
     slots: [],
@@ -121,6 +133,8 @@
     stopBtn: document.getElementById("stopBtn"),
     metronomeToggle: document.getElementById("metronomeToggle"),
     analyzeBtn: document.getElementById("analyzeBtn"),
+    progressionPresetSelect: document.getElementById("progressionPresetSelect"),
+    applyPresetBtn: document.getElementById("applyPresetBtn"),
     resetChoicesBtn: document.getElementById("resetChoicesBtn"),
     progressionInput: document.getElementById("progressionInput"),
     midiInput: document.getElementById("midiInput"),
@@ -148,6 +162,7 @@
 
   function init() {
     bindEvents();
+    renderProgressionPresetOptions();
     renderTechniqueLibrary();
     analyzeFromText(false);
   }
@@ -158,6 +173,8 @@
       state.midiNotes = null;
       analyzeFromText(false);
     });
+
+    els.applyPresetBtn.addEventListener("click", applyProgressionPreset);
 
     els.progressionInput.addEventListener("input", function () {
       state.midiSourceActive = false;
@@ -354,6 +371,39 @@
         els.explainDialog.close();
       }
     });
+  }
+
+  function renderProgressionPresetOptions() {
+    els.progressionPresetSelect.innerHTML = ['<option value="">选择常用走向</option>'].concat(PROGRESSION_PRESETS.map(function (preset) {
+      return '<option value="' + escapeHtml(preset.id) + '">' + escapeHtml(preset.label) + '</option>';
+    })).join("");
+  }
+
+  function applyProgressionPreset() {
+    var presetId = els.progressionPresetSelect.value;
+    var preset = PROGRESSION_PRESETS.find(function (item) {
+      return item.id === presetId;
+    });
+    if (!preset) {
+      setStatus("请选择一个常用走向");
+      return;
+    }
+
+    stopPlayback();
+    state.midiSourceActive = false;
+    state.midiNotes = null;
+    state.midiName = "";
+    els.midiInput.value = "";
+    els.midiFileName.textContent = "选择 .mid/.midi 文件";
+    els.progressionInput.value = preset.progression;
+    if (preset.key) {
+      els.keySelect.value = preset.key;
+    }
+    if (preset.mode) {
+      els.modeSelect.value = preset.mode;
+    }
+    analyzeFromText(false);
+    setStatus("已导入常用走向：" + preset.label);
   }
 
   function analyzeFromText(preserveChoices) {

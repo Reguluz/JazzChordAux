@@ -85,6 +85,13 @@
         <div class="input-compose">
           <div class="input-actions">
             <button id="analyzeBtn" type="button" class="analyze-action">分析</button>
+            <div class="preset-import">
+              <label>
+                常用走向
+                <select id="progressionPresetSelect" aria-label="常用基础和声走向"></select>
+              </label>
+              <button id="applyPresetBtn" type="button" class="ghost">导入</button>
+            </div>
             <label class="file-drop">
               <input id="midiInput" type="file" accept=".mid,.midi,audio/midi">
               <span>提交 MIDI</span>
