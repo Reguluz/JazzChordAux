@@ -65,6 +65,9 @@
     textDirty: false,
     activeWorkflowStep: "harmony",
     activeCategory: "全部",
+    history: [],
+    pendingControlSnapshot: null,
+    isRestoringHistory: false,
     audioContext: null,
     scheduledNodes: [],
     metronomeEnabled: false,
@@ -150,6 +153,7 @@
     arrangementStepBtn: document.getElementById("arrangementStepBtn"),
     workflowPrevBtn: document.getElementById("workflowPrevBtn"),
     workflowNextBtn: document.getElementById("workflowNextBtn"),
+    undoBtn: document.getElementById("undoBtn"),
     docSearch: document.getElementById("docSearch"),
     categoryTabs: document.getElementById("categoryTabs"),
     techniqueDocs: document.getElementById("techniqueDocs"),
@@ -165,10 +169,12 @@
     renderProgressionPresetOptions();
     renderTechniqueLibrary();
     analyzeFromText(false);
+    renderHistoryState();
   }
 
   function bindEvents() {
     els.analyzeBtn.addEventListener("click", function () {
+      pushHistory("分析输入前");
       state.midiSourceActive = false;
       state.midiNotes = null;
       analyzeFromText(false);
@@ -181,11 +187,15 @@
       state.textDirty = true;
     });
 
+    bindControlHistory(els.keySelect, "修改调性前");
     els.keySelect.addEventListener("change", function () {
+      commitControlHistory("修改调性前");
       recomputeAndRender();
     });
 
+    bindControlHistory(els.modeSelect, "修改调式前");
     els.modeSelect.addEventListener("change", function () {
+      commitControlHistory("修改调式前");
       recomputeAndRender();
     });
 
@@ -214,6 +224,7 @@
     });
 
     els.resetChoicesBtn.addEventListener("click", function () {
+      pushHistory("清空选择前");
       state.lockedChoices = {};
       state.arrangementChoices = {};
       state.expandedHarmonyIndex = 0;
@@ -251,12 +262,14 @@
         var optionId = adoptButton.dataset.optionId;
         var locked = state.lockedChoices[index];
         if (locked && locked.id === optionId) {
+          pushHistory("取消和声方案前");
           delete state.lockedChoices[index];
           state.arrangementChoices = {};
           setStatus("已取消该位置方案");
         } else {
           var option = findOption(index, optionId);
           if (option) {
+            pushHistory("采用和声方案前");
             state.lockedChoices[index] = cloneOption(option);
             state.arrangementChoices = {};
             removeLaterInvalidChoices(index);
@@ -309,11 +322,13 @@
       var optionId = adoptButton.dataset.optionId;
       var locked = state.arrangementChoices[index];
       if (locked && locked.id === optionId) {
+        pushHistory("取消编配方案前");
         delete state.arrangementChoices[index];
         setStatus("已取消该编配方案");
       } else {
         var option = findArrangementOption(index, optionId);
         if (option) {
+          pushHistory("采用编配方案前");
           state.arrangementChoices[index] = cloneOption(option);
           setStatus("已采用编配方案，可返回上一步继续修改和声");
         }
@@ -343,6 +358,7 @@
       stopPlayback();
       setStatus("停止播放");
     });
+    els.undoBtn.addEventListener("click", undoLastHistory);
     els.metronomeToggle.addEventListener("change", function () {
       state.metronomeEnabled = els.metronomeToggle.checked;
       if (!state.metronomeEnabled) {
@@ -389,6 +405,7 @@
       return;
     }
 
+    pushHistory("导入常用走向前");
     stopPlayback();
     state.midiSourceActive = false;
     state.midiNotes = null;
@@ -404,6 +421,120 @@
     }
     analyzeFromText(false);
     setStatus("已导入常用走向：" + preset.label);
+  }
+
+  function bindControlHistory(control, label) {
+    ["focus", "pointerdown", "keydown"].forEach(function (eventName) {
+      control.addEventListener(eventName, function () {
+        prepareControlHistory(label);
+      });
+    });
+  }
+
+  function prepareControlHistory(label) {
+    if (state.isRestoringHistory) {
+      return;
+    }
+    if (!state.pendingControlSnapshot) {
+      state.pendingControlSnapshot = snapshotState(label);
+    }
+  }
+
+  function commitControlHistory(label) {
+    if (state.isRestoringHistory) {
+      return;
+    }
+    if (state.pendingControlSnapshot) {
+      pushSnapshot(state.pendingControlSnapshot);
+      state.pendingControlSnapshot = null;
+      return;
+    }
+    pushHistory(label);
+  }
+
+  function pushHistory(label) {
+    if (state.isRestoringHistory) {
+      return;
+    }
+    state.pendingControlSnapshot = null;
+    pushSnapshot(snapshotState(label));
+  }
+
+  function pushSnapshot(snapshot) {
+    state.history.push(snapshot);
+    if (state.history.length > 60) {
+      state.history.shift();
+    }
+    renderHistoryState();
+  }
+
+  function snapshotState(label) {
+    return {
+      label: label,
+      slots: clonePlain(state.slots),
+      lockedChoices: clonePlain(state.lockedChoices),
+      arrangementChoices: clonePlain(state.arrangementChoices),
+      expandedHarmonyIndex: state.expandedHarmonyIndex,
+      midiNotes: clonePlain(state.midiNotes),
+      midiName: state.midiName,
+      midiSourceActive: state.midiSourceActive,
+      textDirty: state.textDirty,
+      activeWorkflowStep: state.activeWorkflowStep,
+      activeCategory: state.activeCategory,
+      metronomeEnabled: state.metronomeEnabled,
+      keyValue: els.keySelect.value,
+      modeValue: els.modeSelect.value,
+      tempoValue: els.tempoInput.value,
+      progressionText: els.progressionInput.value,
+      midiFileNameText: els.midiFileName.textContent,
+      presetValue: els.progressionPresetSelect.value
+    };
+  }
+
+  function undoLastHistory() {
+    if (!state.history.length) {
+      setStatus("没有可撤回的调整");
+      return;
+    }
+    var snapshot = state.history.pop();
+    restoreSnapshot(snapshot);
+    setStatus("已撤回到：" + snapshot.label);
+  }
+
+  function restoreSnapshot(snapshot) {
+    state.isRestoringHistory = true;
+    stopPlayback();
+    state.slots = clonePlain(snapshot.slots || []);
+    state.lockedChoices = clonePlain(snapshot.lockedChoices || {});
+    state.arrangementChoices = clonePlain(snapshot.arrangementChoices || {});
+    state.expandedHarmonyIndex = snapshot.expandedHarmonyIndex || 0;
+    state.midiNotes = clonePlain(snapshot.midiNotes);
+    state.midiName = snapshot.midiName || "";
+    state.midiSourceActive = Boolean(snapshot.midiSourceActive);
+    state.textDirty = Boolean(snapshot.textDirty);
+    state.activeWorkflowStep = snapshot.activeWorkflowStep || "harmony";
+    state.activeCategory = snapshot.activeCategory || "全部";
+    state.metronomeEnabled = Boolean(snapshot.metronomeEnabled);
+    els.keySelect.value = snapshot.keyValue || "auto";
+    els.modeSelect.value = snapshot.modeValue || "auto";
+    els.tempoInput.value = snapshot.tempoValue || "96";
+    els.progressionInput.value = snapshot.progressionText || "";
+    els.midiFileName.textContent = snapshot.midiFileNameText || "选择 .mid/.midi 文件";
+    els.progressionPresetSelect.value = snapshot.presetValue || "";
+    els.metronomeToggle.checked = state.metronomeEnabled;
+    state.pendingControlSnapshot = null;
+    recomputeAndRender();
+    renderTechniqueLibrary();
+    renderHistoryState();
+    state.isRestoringHistory = false;
+  }
+
+  function renderHistoryState() {
+    if (!els.undoBtn) {
+      return;
+    }
+    els.undoBtn.disabled = !state.history.length;
+    els.undoBtn.textContent = state.history.length ? "撤回 " + state.history.length : "撤回";
   }
 
   function analyzeFromText(preserveChoices) {
@@ -518,6 +649,7 @@
         startBeat += duration;
       });
 
+      pushHistory("应用识别修改前");
       state.slots = nextSlots;
       state.lockedChoices = {};
       state.arrangementChoices = {};
@@ -828,7 +960,7 @@
       addTurnaround(suggestions, slot, keyRoot, preferFlats);
     }
 
-    return uniqueOptions(suggestions).slice(0, 10);
+    return uniqueOptions(suggestions);
   }
 
   function addBasicExtensions(suggestions, slot, preferFlats) {
@@ -1514,6 +1646,156 @@
     }
   }
 
+  function generateModalBorrowingOptions(index) {
+    var slot = state.slots[index];
+    if (!slot || !slot.chord) {
+      return [];
+    }
+
+    var targetEntry = getEffectiveChord(index + 1);
+    var target = targetEntry && targetEntry.chord ? targetEntry.chord : slot.chord;
+    if (!target) {
+      return [];
+    }
+
+    var preferFlats = shouldPreferFlats(getSelectedKeyRoot(), target.rootPc);
+    var duration = slot.duration;
+    var options = [];
+    var targetLabel = target.symbol;
+    var bII = pcToName(mod(target.rootPc + 1, 12), true) + "maj7";
+    var bIII = pcToName(mod(target.rootPc + 3, 12), true) + "maj7";
+    var ivRoot = pcToName(mod(target.rootPc + 5, 12), preferFlats);
+    var bVI = pcToName(mod(target.rootPc + 8, 12), true) + "maj7";
+    var bVII = pcToName(mod(target.rootPc + 10, 12), true);
+    var trigger = targetEntry ? "目标前替换" : "当前和弦原地换色";
+
+    options.push(Object.assign(option(
+      "borrow-panel-neapolitan-" + index + "-" + target.rootPc,
+      "Neapolitan bIImaj7",
+      "调式借用",
+      [event(bII, duration)],
+      bII + " 半音下行导向 " + targetLabel + "。",
+      [
+        "识别：当前位置可作为 `" + targetLabel + "` 前的调式借用色彩。",
+        "替换：目标根音上方半音是 `" + bII.replace("maj7", "") + "`，生成 `" + bII + "`。",
+        "理论：bII 可来自 Phrygian/Neapolitan 色彩，不靠传统 V-I，而靠根音半音下行回到目标。",
+        "效果：回家感明确，但比正格属解决更柔和、更电影化。"
+      ].join("\n")
+    ), {
+      borrowSource: "Phrygian / Neapolitan",
+      trigger: trigger
+    }));
+
+    options.push(Object.assign(option(
+      "borrow-panel-flat-three-" + index + "-" + target.rootPc,
+      "平行小调 bIIImaj7",
+      "调式借用",
+      [event(bIII, duration)],
+      bIII + " 作为平行小调 bIII 色彩导向 " + targetLabel + "。",
+      [
+        "识别：目标 `" + targetLabel + "` 可接受平行小调稳定级数的借用。",
+        "替换：从平行小调取 bIII，得到 `" + bIII + "`。",
+        "理论：bIIImaj7 与 I 共享调式中心的暗色关系，功能较弱但色彩明确。",
+        "效果：比直接功能推进更有流行/影视化的色彩跳转。"
+      ].join("\n")
+    ), {
+      borrowSource: "平行小调 bIII",
+      trigger: trigger
+    }));
+
+    options.push(Object.assign(option(
+      "borrow-panel-flat-six-" + index + "-" + target.rootPc,
+      "平行小调 bVImaj7",
+      "调式借用",
+      [event(bVI, duration)],
+      bVI + " 作为平行小调 bVI 色彩导向 " + targetLabel + "。",
+      [
+        "识别：目标 `" + targetLabel + "` 可借平行小调的 bVI。",
+        "替换：目标根音上方小六度得到 `" + bVI + "`。",
+        "理论：bVImaj7 是常见 modal interchange 和弦，和主和弦形成暗色对照。",
+        "效果：适合段落转折、影视感铺垫或更宽的回家路径。"
+      ].join("\n")
+    ), {
+      borrowSource: "平行小调 bVI",
+      trigger: trigger
+    }));
+
+    options.push(Object.assign(option(
+      "borrow-panel-flat-seven-" + index + "-" + target.rootPc,
+      "平行小调 bVII7",
+      "调式借用",
+      [event(bVII + "7", duration)],
+      bVII + "7 以 backdoor 色彩导向 " + targetLabel + "。",
+      [
+        "识别：目标 `" + targetLabel + "` 可被 bVII7 从 backdoor 方向导入。",
+        "替换：从平行小调/小下属系统借 bVII7，得到 `" + bVII + "7`。",
+        "理论：bVII7 不按传统 V7 下五度解决，而是以小下属系统的色彩回到目标。",
+        "效果：比普通 V-I 更柔和，也更接近 soul、jazz ballad 和流行爵士语汇。"
+      ].join("\n")
+    ), {
+      borrowSource: "平行小调 bVII / backdoor",
+      trigger: trigger
+    }));
+
+    options.push(Object.assign(option(
+      "borrow-panel-minor-iv-" + index + "-" + target.rootPc,
+      "小下属 ivm6",
+      "调式借用",
+      [event(ivRoot + "m6", duration)],
+      ivRoot + "m6 借用小下属导向 " + targetLabel + "。",
+      [
+        "识别：目标 `" + targetLabel + "` 前可使用小下属借用。",
+        "替换：目标的 IV 是 `" + ivRoot + "`，从平行小调借成 `" + ivRoot + "m6`。",
+        "理论：ivm6 的 b6 色彩会向目标和弦内部音半音解决，是常见 bittersweet 终止。",
+        "效果：保留回家方向，但色彩更温暖、更含蓄。"
+      ].join("\n")
+    ), {
+      borrowSource: "平行小调 iv",
+      trigger: trigger
+    }));
+
+    if (duration >= 2) {
+      var halves = splitDuration(duration, 2);
+      var minorIi = pcToName(mod(target.rootPc + 2, 12), preferFlats) + "m7b5";
+      var minorV = pcToName(mod(target.rootPc + 7, 12), preferFlats) + "7alt";
+      options.push(Object.assign(option(
+        "borrow-panel-backdoor-two-five-" + index + "-" + target.rootPc,
+        "Backdoor ii-V 借用",
+        "调式借用",
+        [event(ivRoot + "m7", halves[0]), event(bVII + "7", halves[1])],
+        ivRoot + "m7 - " + bVII + "7 导向 " + targetLabel + "。",
+        [
+          "识别：当前位置时值足够拆成小下属系统的两步导入。",
+          "替换：使用 `" + ivRoot + "m7 - " + bVII + "7`。",
+          "理论：ivm7-bVII7 是 backdoor ii-V，来自平行小调的小下属区域。",
+          "效果：比单个 bVII7 更完整，适合需要柔和推进的终止前。"
+        ].join("\n")
+      ), {
+        borrowSource: "小下属系统",
+        trigger: "时值可拆分"
+      }));
+
+      options.push(Object.assign(option(
+        "borrow-panel-minor-two-five-" + index + "-" + target.rootPc,
+        "Minor ii-V 借用",
+        "调式借用",
+        [event(minorIi, halves[0]), event(minorV, halves[1])],
+        minorIi + " - " + minorV + " 暗色导向 " + targetLabel + "。",
+        [
+          "识别：当前位置时值足够借用小调 iiø-V 作为导入。",
+          "替换：用目标的 iiø `" + minorIi + "` 和 Valt `" + minorV + "`。",
+          "理论：iiø-V7alt 来自小调终止语汇，即使目标回到大和弦，也会产生更深的暗色张力。",
+          "效果：推进力强，适合 jazz ballad、minor color 或更明显的张力释放。"
+        ].join("\n")
+      ), {
+        borrowSource: "和声小调 / 旋律小调终止",
+        trigger: "时值可拆分"
+      }));
+    }
+
+    return uniqueOptions(options);
+  }
+
   function addColorDominantApproach(suggestions, slot, next, preferFlats) {
     if (!next.chord || !isMajorLike(next.chord)) {
       return;
@@ -1651,6 +1933,18 @@
     });
   }
 
+  function optionIntensity(item) {
+    var category = item && item.category ? item.category : "";
+    var title = item && item.title ? item.title : "";
+    if (category === "高级重配" || /Coltrane|Barry|Chromatic mediants|Backcycling|反向五度|双向半音/i.test(title)) {
+      return { label: "高级", cardClass: "intensity-advanced", chipClass: "chip-advanced" };
+    }
+    if (["调式借用", "减七与对称", "经过与低音线", "流行/影视/色彩增色", "属功能与终止", "排列与复合"].includes(category)) {
+      return { label: "色彩", cardClass: "intensity-color", chipClass: "chip-color" };
+    }
+    return { label: "基础", cardClass: "intensity-basic", chipClass: "chip-basic" };
+  }
+
   function getEffectiveChord(index) {
     if (index < 0 || index >= state.slots.length) {
       return null;
@@ -1753,6 +2047,7 @@
     var selectedSuggestions = state.currentSuggestions[state.expandedHarmonyIndex] || [];
     var selectedDegree = degreeForChord(selectedSlot.chord, context);
     var selectedOutput = selectedLocked ? selectedLocked.output : [event(selectedSlot.symbol, selectedSlot.duration)];
+    var borrowingPanelHtml = renderModalBorrowingPanel(state.expandedHarmonyIndex, context, selectedLocked);
     var progressionHtml = state.slots.map(function (slot, index) {
       var locked = state.lockedChoices[index];
       var isExpanded = index === state.expandedHarmonyIndex;
@@ -1791,15 +2086,16 @@
     var choicesHtml = selectedSuggestions.length
       ? selectedSuggestions.map(function (choice) {
         var isLocked = selectedLocked && selectedLocked.id === choice.id;
+        var intensity = optionIntensity(choice);
         return [
-          '<div class="choice-card ' + (isLocked ? "locked" : "") + '">',
+          '<div class="choice-card ' + (isLocked ? "locked " : "") + intensity.cardClass + '">',
           '<div class="choice-actions">',
           '<button class="adopt-btn ' + (isLocked ? "adopted" : "") + '" type="button" data-adopt-index="' + state.expandedHarmonyIndex + '" data-option-id="' + escapeHtml(choice.id) + '" title="' + (isLocked ? "取消该方案" : "采用该方案") + '"><span class="adopt-default">' + (isLocked ? "已采用" : "采用") + '</span><span class="adopt-hover">取消</span></button>',
           '<button class="mini-play-btn" type="button" data-play-option-index="' + state.expandedHarmonyIndex + '" data-option-id="' + escapeHtml(choice.id) + '" title="预览该方案">▶</button>',
           '<button class="info-btn" type="button" data-explain-index="' + state.expandedHarmonyIndex + '" data-option-id="' + escapeHtml(choice.id) + '">i<span class="tooltip">' + escapeHtml(choice.summary) + '</span></button>',
           '</div>',
           '<div>',
-          '<div class="choice-title"><span>' + escapeHtml(choice.title) + '</span><span class="tag">' + escapeHtml(choice.category) + '</span></div>',
+          '<div class="choice-title"><span>' + escapeHtml(choice.title) + '</span><span class="tag">' + escapeHtml(choice.category) + '</span><span class="intensity-chip ' + intensity.chipClass + '">' + intensity.label + '</span></div>',
           '<div class="choice-output">' + displaySequence(choice.output, context) + '</div>',
           '</div>',
           '</div>'
@@ -1826,6 +2122,48 @@
       '<div class="selected-line compact-selected">' + selectedLine + '</div>',
       '</div>',
       '<div class="choice-list options-list">' + choicesHtml + '</div>',
+      borrowingPanelHtml,
+      '</section>'
+    ].join("");
+  }
+
+  function renderModalBorrowingPanel(index, context, selectedLocked) {
+    var options = generateModalBorrowingOptions(index);
+    if (!options.length) {
+      return "";
+    }
+    var targetEntry = getEffectiveChord(index + 1);
+    var targetText = targetEntry && targetEntry.chord ? targetEntry.chord.symbol : state.slots[index].symbol;
+    var optionsHtml = options.map(function (choice) {
+      var isLocked = selectedLocked && selectedLocked.id === choice.id;
+      var intensity = optionIntensity(choice);
+      return [
+        '<div class="choice-card borrow-choice ' + (isLocked ? "locked " : "") + intensity.cardClass + '">',
+        '<div class="choice-actions">',
+        '<button class="adopt-btn ' + (isLocked ? "adopted" : "") + '" type="button" data-adopt-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '" title="' + (isLocked ? "取消该借用" : "采用该借用") + '"><span class="adopt-default">' + (isLocked ? "已采用" : "采用") + '</span><span class="adopt-hover">取消</span></button>',
+        '<button class="mini-play-btn" type="button" data-play-option-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '" title="预览该借用">▶</button>',
+        '<button class="info-btn" type="button" data-explain-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '">i<span class="tooltip">' + escapeHtml(choice.summary) + '</span></button>',
+        '</div>',
+        '<div>',
+        '<div class="choice-title"><span>' + escapeHtml(choice.title) + '</span><span class="tag">' + escapeHtml(choice.category) + '</span><span class="intensity-chip ' + intensity.chipClass + '">' + intensity.label + '</span></div>',
+        '<div class="choice-output">' + displaySequence(choice.output, context) + '</div>',
+        '<div class="borrow-source">来源：' + escapeHtml(choice.borrowSource || "调式借用") + ' · 触发：' + escapeHtml(choice.trigger || "目标前替换") + '</div>',
+        '</div>',
+        '</div>'
+      ].join("");
+    }).join("");
+
+    return [
+      '<section class="borrow-panel" aria-label="调式借用交互面板">',
+      '<div class="borrow-panel-head">',
+      '<div>',
+      '<h4>调式借用面板</h4>',
+      '<span>基于目标 ' + escapeHtml(targetText) + ' 生成可借和弦；颜色只表示听感强度，不隐藏任何方案。</span>',
+      '</div>',
+      '</div>',
+      '<div class="borrow-grid">',
+      optionsHtml,
+      '</div>',
       '</section>'
     ].join("");
   }
@@ -1870,15 +2208,16 @@
       var choicesHtml = options.length
         ? options.map(function (choice) {
           var isLocked = locked && locked.id === choice.id;
+          var intensity = optionIntensity(choice);
           return [
-            '<div class="choice-card ' + (isLocked ? "locked" : "") + '">',
+            '<div class="choice-card ' + (isLocked ? "locked " : "") + intensity.cardClass + '">',
             '<div class="choice-actions">',
             '<button class="adopt-btn ' + (isLocked ? "adopted" : "") + '" type="button" data-arrange-adopt-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '" title="' + (isLocked ? "取消该编配" : "采用该编配") + '"><span class="adopt-default">' + (isLocked ? "已采用" : "采用") + '</span><span class="adopt-hover">取消</span></button>',
             '<button class="mini-play-btn" type="button" data-arrange-play-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '" title="预览该编配">▶</button>',
             '<button class="info-btn" type="button" data-arrange-explain-index="' + index + '" data-option-id="' + escapeHtml(choice.id) + '">i<span class="tooltip">' + escapeHtml(choice.summary) + '</span></button>',
             '</div>',
             '<div>',
-            '<div class="choice-title"><span>' + escapeHtml(choice.title) + '</span><span class="tag">' + escapeHtml(choice.category) + '</span></div>',
+            '<div class="choice-title"><span>' + escapeHtml(choice.title) + '</span><span class="tag">' + escapeHtml(choice.category) + '</span><span class="intensity-chip ' + intensity.chipClass + '">' + intensity.label + '</span></div>',
             '<div class="choice-output">' + escapeHtml(choice.outputLabel) + '</div>',
             '</div>',
             '</div>'
@@ -2266,6 +2605,7 @@
         throw new Error("MIDI 中没有识别到可归纳为和弦的音组。");
       }
 
+      pushHistory("导入 MIDI 前");
       state.midiName = file.name;
       state.midiNotes = midi.notes;
       state.midiSourceActive = true;
@@ -3283,8 +3623,15 @@
     return JSON.parse(JSON.stringify(item));
   }
 
+  function clonePlain(value) {
+    if (value === undefined) {
+      return undefined;
+    }
+    return JSON.parse(JSON.stringify(value));
+  }
+
   function findOption(index, optionId) {
-    return (state.currentSuggestions[index] || []).find(function (item) {
+    return (state.currentSuggestions[index] || []).concat(generateModalBorrowingOptions(index)).find(function (item) {
       return item.id === optionId;
     }) || null;
   }

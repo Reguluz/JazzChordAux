@@ -121,7 +121,10 @@
             <p class="eyebrow">Workflow</p>
             <h2 id="workspaceTitle">优化方案工作台</h2>
           </div>
-          <span id="statusBadge" class="status-badge">Ready</span>
+          <div class="workspace-status">
+            <button id="undoBtn" type="button" class="ghost history-btn" disabled>撤回</button>
+            <span id="statusBadge" class="status-badge">Ready</span>
+          </div>
         </div>
         <div class="workflow-tabs" role="tablist" aria-label="工作流程">
           <button id="harmonyStepBtn" type="button" class="active" data-workflow-step="harmony">1. 和声重配</button>

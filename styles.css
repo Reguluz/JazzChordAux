@@ -339,6 +339,19 @@ h3 {
   min-height: 32px;
 }
 
+.workspace-status {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.history-btn {
+  min-height: 32px;
+  padding: 0 10px;
+}
+
 textarea {
   width: 100%;
   height: 118px;
@@ -1040,6 +1053,7 @@ code {
 
 .choice-card {
   border: 1px solid #d9dedc;
+  border-left-width: 4px;
   border-radius: 8px;
   padding: 7px 8px;
   display: grid;
@@ -1049,8 +1063,21 @@ code {
   background: #fbfdfd;
 }
 
+.choice-card.intensity-basic {
+  border-left-color: #6f8f5f;
+}
+
+.choice-card.intensity-color {
+  border-left-color: var(--cool);
+}
+
+.choice-card.intensity-advanced {
+  border-left-color: var(--warm);
+}
+
 .choice-card.locked {
   border-color: rgba(13, 119, 112, 0.6);
+  border-left-color: var(--accent);
   background: #eef8f6;
 }
 
@@ -1071,6 +1098,28 @@ code {
   font-size: 0.7rem;
 }
 
+.intensity-chip {
+  border-radius: 999px;
+  padding: 3px 7px;
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.chip-basic {
+  background: #edf4e8;
+  color: #3f6035;
+}
+
+.chip-color {
+  background: #edf2fb;
+  color: #2d4f86;
+}
+
+.chip-advanced {
+  background: #fff1e8;
+  color: #8a4218;
+}
+
 .choice-output {
   margin-top: 2px;
   color: var(--muted);
@@ -1083,6 +1132,42 @@ code {
   align-items: center;
   justify-content: flex-start;
   gap: 5px;
+}
+
+.borrow-panel {
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.borrow-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.borrow-panel h4 {
+  margin: 0 0 3px;
+  font-size: 0.92rem;
+}
+
+.borrow-panel-head span,
+.borrow-source {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.borrow-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.borrow-choice {
+  background: #fffefa;
 }
 
 .adopt-btn {
@@ -1386,6 +1471,14 @@ code {
   .options-board-head {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .workspace-status {
+    justify-content: flex-start;
+  }
+
+  .borrow-grid {
+    grid-template-columns: 1fr;
   }
 
   .input-compose {
