@@ -30,6 +30,14 @@
               <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
               <span>节拍器</span>
             </label>
+            <label class="playback-layer">
+              播放层
+              <select id="playbackLayerSelect" aria-label="播放层选择">
+                <option value="merged">合并</option>
+                <option value="bass">只 Bassline</option>
+                <option value="chords">只和弦</option>
+              </select>
+            </label>
           </div>
           <div class="transport">
             <label>
@@ -97,10 +105,21 @@
               <span>提交 MIDI</span>
               <strong id="midiFileName">选择 .mid/.midi 文件</strong>
             </label>
+            <label class="file-drop bass-file-drop">
+              <input id="bassMidiInput" type="file" accept=".mid,.midi,audio/midi">
+              <span>提交 Bass MIDI</span>
+              <strong id="bassMidiFileName">选择 bassline MIDI</strong>
+            </label>
             <button id="resetChoicesBtn" type="button" class="ghost">清空选择</button>
           </div>
 
-          <textarea id="progressionInput" spellcheck="false">C:4 | Am:4 | Dm:4 | G7:4 | C:4</textarea>
+          <div class="input-main-stack">
+            <textarea id="progressionInput" spellcheck="false">C:4 | Am:4 | Dm:4 | G7:4 | C:4</textarea>
+            <label class="bassline-field">
+              <span>Bassline（可选，例：C2:4 | A1:4 | D2:4 | G1:4）</span>
+              <textarea id="basslineInput" spellcheck="false" placeholder="可输入音名+时值，或提交单独的 bassline MIDI"></textarea>
+            </label>
+          </div>
         </div>
 
         <div class="parsed-panel">

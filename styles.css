@@ -122,6 +122,23 @@ button.ghost:hover {
   line-height: 1;
 }
 
+.playback-layer {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.playback-layer select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  min-height: 46px;
+  padding: 0 10px;
+}
+
 .original-play {
   background: var(--cool);
 }
@@ -374,7 +391,7 @@ textarea {
 
 .input-actions {
   display: grid;
-  grid-template-rows: 38px auto minmax(0, 1fr) 34px;
+  grid-template-rows: 38px auto minmax(0, 1fr) minmax(0, 1fr) 34px;
   gap: 7px;
 }
 
@@ -450,6 +467,34 @@ textarea {
 .file-drop strong {
   font-size: 0.88rem;
   overflow-wrap: anywhere;
+}
+
+.bass-file-drop {
+  background: #f3f7ff;
+}
+
+.bass-file-drop span {
+  color: var(--cool);
+}
+
+.input-main-stack {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.bassline-field {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.bassline-field textarea {
+  height: 58px;
+  min-height: 52px;
+  resize: vertical;
 }
 
 .hint-strip {
@@ -1019,6 +1064,18 @@ code {
   color: #594d43;
   font-size: 0.76rem;
   font-weight: 750;
+}
+
+.bass-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #edf2fb;
+  color: #2d4f86;
+  font-size: 0.74rem;
+  font-weight: 850;
 }
 
 .slot-degree-row {

@@ -40,6 +40,7 @@
   };
   var MODE_ORDER = ["ionian", "aeolian", "dorian", "mixolydian", "harmonicMinor", "lydian", "phrygian", "locrian"];
   var MAJOR_DEGREE_NAMES = ["I", "bII", "II", "bIII", "III", "IV", "#IV", "V", "bVI", "VI", "bVII", "VII"];
+  var BAR_BEATS = 4;
   var PROGRESSION_PRESETS = [
     { id: "pop-1564", label: "流行 I-vi-IV-V", key: "C", mode: "ionian", progression: "C:4 | Am:4 | F:4 | G:4" },
     { id: "pop-1564-var", label: "流行 I-V-vi-IV", key: "C", mode: "ionian", progression: "C:4 | G:4 | Am:4 | F:4" },
@@ -62,6 +63,10 @@
     midiNotes: null,
     midiName: "",
     midiSourceActive: false,
+    basslineEntries: [],
+    basslineMidiNotes: null,
+    basslineName: "",
+    basslineSourceActive: false,
     textDirty: false,
     activeWorkflowStep: "harmony",
     activeCategory: "全部",
@@ -135,14 +140,19 @@
     playOptimizedBtn: document.getElementById("playOptimizedBtn"),
     stopBtn: document.getElementById("stopBtn"),
     metronomeToggle: document.getElementById("metronomeToggle"),
+    playbackLayerSelect: document.getElementById("playbackLayerSelect"),
     analyzeBtn: document.getElementById("analyzeBtn"),
     progressionPresetSelect: document.getElementById("progressionPresetSelect"),
     applyPresetBtn: document.getElementById("applyPresetBtn"),
     resetChoicesBtn: document.getElementById("resetChoicesBtn"),
     progressionInput: document.getElementById("progressionInput"),
+    basslineInput: document.getElementById("basslineInput"),
     midiInput: document.getElementById("midiInput"),
+    bassMidiInput: document.getElementById("bassMidiInput"),
     fileDrop: document.querySelector(".file-drop"),
+    bassFileDrop: document.querySelector(".bass-file-drop"),
     midiFileName: document.getElementById("midiFileName"),
+    bassMidiFileName: document.getElementById("bassMidiFileName"),
     applyParsedEditsBtn: document.getElementById("applyParsedEditsBtn"),
     parsedList: document.getElementById("parsedList"),
     analysisMeta: document.getElementById("analysisMeta"),
@@ -185,6 +195,13 @@
     els.progressionInput.addEventListener("input", function () {
       state.midiSourceActive = false;
       state.textDirty = true;
+    });
+
+    els.basslineInput.addEventListener("input", function () {
+      state.basslineSourceActive = false;
+      state.basslineMidiNotes = null;
+      state.textDirty = true;
+      els.bassMidiFileName.textContent = "选择 bassline MIDI";
     });
 
     bindControlHistory(els.keySelect, "修改调性前");
@@ -337,6 +354,7 @@
     });
 
     els.midiInput.addEventListener("change", handleMidiUpload);
+    els.bassMidiInput.addEventListener("change", handleBasslineMidiUpload);
     els.fileDrop.addEventListener("dragover", function (event) {
       event.preventDefault();
       els.fileDrop.classList.add("drag-over");
@@ -350,6 +368,21 @@
       var file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
       if (file) {
         handleMidiFile(file);
+      }
+    });
+    els.bassFileDrop.addEventListener("dragover", function (event) {
+      event.preventDefault();
+      els.bassFileDrop.classList.add("drag-over");
+    });
+    els.bassFileDrop.addEventListener("dragleave", function () {
+      els.bassFileDrop.classList.remove("drag-over");
+    });
+    els.bassFileDrop.addEventListener("drop", function (event) {
+      event.preventDefault();
+      els.bassFileDrop.classList.remove("drag-over");
+      var file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+      if (file) {
+        handleBasslineMidiFile(file);
       }
     });
     els.playOriginalBtn.addEventListener("click", playOriginal);
@@ -478,6 +511,10 @@
       midiNotes: clonePlain(state.midiNotes),
       midiName: state.midiName,
       midiSourceActive: state.midiSourceActive,
+      basslineEntries: clonePlain(state.basslineEntries),
+      basslineMidiNotes: clonePlain(state.basslineMidiNotes),
+      basslineName: state.basslineName,
+      basslineSourceActive: state.basslineSourceActive,
       textDirty: state.textDirty,
       activeWorkflowStep: state.activeWorkflowStep,
       activeCategory: state.activeCategory,
@@ -486,7 +523,10 @@
       modeValue: els.modeSelect.value,
       tempoValue: els.tempoInput.value,
       progressionText: els.progressionInput.value,
+      basslineText: els.basslineInput.value,
       midiFileNameText: els.midiFileName.textContent,
+      bassMidiFileNameText: els.bassMidiFileName.textContent,
+      playbackLayerValue: els.playbackLayerSelect.value,
       presetValue: els.progressionPresetSelect.value
     };
   }
@@ -511,6 +551,10 @@
     state.midiNotes = clonePlain(snapshot.midiNotes);
     state.midiName = snapshot.midiName || "";
     state.midiSourceActive = Boolean(snapshot.midiSourceActive);
+    state.basslineEntries = clonePlain(snapshot.basslineEntries || []);
+    state.basslineMidiNotes = clonePlain(snapshot.basslineMidiNotes);
+    state.basslineName = snapshot.basslineName || "";
+    state.basslineSourceActive = Boolean(snapshot.basslineSourceActive);
     state.textDirty = Boolean(snapshot.textDirty);
     state.activeWorkflowStep = snapshot.activeWorkflowStep || "harmony";
     state.activeCategory = snapshot.activeCategory || "全部";
@@ -519,7 +563,10 @@
     els.modeSelect.value = snapshot.modeValue || "auto";
     els.tempoInput.value = snapshot.tempoValue || "96";
     els.progressionInput.value = snapshot.progressionText || "";
+    els.basslineInput.value = snapshot.basslineText || "";
     els.midiFileName.textContent = snapshot.midiFileNameText || "选择 .mid/.midi 文件";
+    els.bassMidiFileName.textContent = snapshot.bassMidiFileNameText || "选择 bassline MIDI";
+    els.playbackLayerSelect.value = snapshot.playbackLayerValue || "merged";
     els.progressionPresetSelect.value = snapshot.presetValue || "";
     els.metronomeToggle.checked = state.metronomeEnabled;
     state.pendingControlSnapshot = null;
@@ -540,7 +587,8 @@
   function analyzeFromText(preserveChoices) {
     try {
       var slots = parseProgression(els.progressionInput.value);
-      state.slots = slots;
+      state.basslineEntries = readBasslineEntries();
+      state.slots = applyBasslineToSlots(slots, state.basslineEntries);
       state.textDirty = false;
       if (!preserveChoices) {
         state.lockedChoices = {};
@@ -548,7 +596,7 @@
         state.expandedHarmonyIndex = 0;
       }
       recomputeAndRender();
-      setStatus(slots.length ? "已分析 " + slots.length + " 个位置，调式估计 " + describeContext(getHarmonicContext()) : "没有识别到和弦");
+      setStatus(slots.length ? "已分析 " + slots.length + " 个位置" + (state.basslineEntries.length ? "，已结合 Bassline" : "") + "，调式估计 " + describeContext(getHarmonicContext()) : "没有识别到和弦");
     } catch (error) {
       state.slots = [];
       state.currentSuggestions = [];
@@ -613,6 +661,9 @@
         symbol: chord.symbol,
         rawSymbol: parsed.symbol,
         chord: chord,
+        harmonySymbol: chord.symbol,
+        harmonyChord: chord,
+        bassNote: null,
         duration: parsed.duration,
         startBeat: startBeat
       };
@@ -621,6 +672,177 @@
     });
 
     return slots;
+  }
+
+  function readBasslineEntries() {
+    if (state.basslineSourceActive && state.basslineEntries.length) {
+      return state.basslineEntries;
+    }
+    var text = els.basslineInput.value.trim();
+    if (text) {
+      return parseBasslineText(text);
+    }
+    if (state.basslineMidiNotes && state.basslineMidiNotes.length) {
+      return aggregateBasslineNotes(state.basslineMidiNotes);
+    }
+    return [];
+  }
+
+  function parseBasslineText(text) {
+    var prepared = text
+      .replace(/[，、；;]/g, " ")
+      .replace(/\|/g, " ")
+      .replace(/\n/g, " ")
+      .trim();
+
+    if (!prepared) {
+      return [];
+    }
+
+    var startBeat = 0;
+    var notes = prepared.split(/\s+/).filter(Boolean).map(function (token) {
+      var parsed = parseBasslineToken(token);
+      var note = {
+        midi: parsed.midi,
+        pc: parsed.pc,
+        name: parsed.name,
+        displayName: parsed.displayName,
+        startBeat: startBeat,
+        duration: parsed.duration,
+        velocity: 96,
+        channel: 0
+      };
+      startBeat += parsed.duration;
+      return note;
+    });
+
+    return aggregateBasslineNotes(notes);
+  }
+
+  function parseBasslineToken(token) {
+    var cleaned = token.trim();
+    var duration = 4;
+    var match = cleaned.match(/^(.+?)(?:[:*@x])(\d+(?:\.\d+)?)$/i);
+    if (!match) {
+      match = cleaned.match(/^(.+?)\((\d+(?:\.\d+)?)\)$/);
+    }
+    if (match) {
+      cleaned = match[1];
+      duration = Math.max(0.25, Number(match[2]) || 4);
+    }
+
+    var noteMatch = cleaned.match(/^([A-Ga-g])([#b♭♯]?)(-?\d+)?$/);
+    if (!noteMatch) {
+      throw new Error("无法识别 Bassline 音符：" + token);
+    }
+
+    var name = noteMatch[1].toUpperCase() + (noteMatch[2] || "").replace("♭", "b").replace("♯", "#");
+    var pc = NOTE_TO_PC[name];
+    if (typeof pc !== "number") {
+      throw new Error("无法识别 Bassline 音高：" + token);
+    }
+
+    var octave = noteMatch[3] === undefined ? null : Number(noteMatch[3]);
+    var midi = octave === null ? normalizeBassMidi(pc) : clamp((octave + 1) * 12 + pc, 12, 72);
+    var displayName = octave === null ? name : name + octave;
+
+    return {
+      name: name,
+      pc: pc,
+      midi: midi,
+      displayName: displayName,
+      duration: duration
+    };
+  }
+
+  function aggregateBasslineNotes(notes) {
+    var measures = new Map();
+    notes.forEach(function (note) {
+      if (!note || note.channel === 9) {
+        return;
+      }
+      var start = Math.max(0, Number(note.startBeat) || 0);
+      var end = start + Math.max(0.05, Number(note.duration) || 0.05);
+      var firstBar = Math.floor(start / BAR_BEATS);
+      var lastBar = Math.floor(Math.max(start, end - 0.0001) / BAR_BEATS);
+
+      for (var bar = firstBar; bar <= lastBar; bar += 1) {
+        var barStart = bar * BAR_BEATS;
+        var barEnd = barStart + BAR_BEATS;
+        var overlap = Math.max(0, Math.min(end, barEnd) - Math.max(start, barStart));
+        if (overlap <= 0) {
+          continue;
+        }
+        if (!measures.has(bar)) {
+          measures.set(bar, new Map());
+        }
+        var midi = typeof note.midi === "number" ? note.midi : normalizeBassMidi(note.pc || 0);
+        var key = String(midi);
+        var bucket = measures.get(bar);
+        var existing = bucket.get(key) || {
+          midi: midi,
+          pc: mod(midi, 12),
+          totalDuration: 0,
+          velocity: note.velocity || 96
+        };
+        existing.totalDuration += overlap;
+        existing.velocity = Math.max(existing.velocity, note.velocity || 96);
+        bucket.set(key, existing);
+      }
+    });
+
+    return Array.from(measures.keys()).sort(function (a, b) {
+      return a - b;
+    }).map(function (bar) {
+      var winner = Array.from(measures.get(bar).values()).sort(function (a, b) {
+        return b.totalDuration - a.totalDuration || a.midi - b.midi;
+      })[0];
+      var preferFlats = shouldPreferFlats(getSelectedKeyRoot(), winner.pc);
+      var name = pcToName(winner.pc, preferFlats);
+      return {
+        barIndex: bar,
+        startBeat: bar * BAR_BEATS,
+        duration: BAR_BEATS,
+        name: name,
+        pc: winner.pc,
+        midi: winner.midi,
+        displayName: midiToNoteName(winner.midi, preferFlats),
+        totalDuration: Math.round(winner.totalDuration * 1000) / 1000,
+        velocity: winner.velocity
+      };
+    });
+  }
+
+  function applyBasslineToSlots(slots, entries) {
+    var byBar = new Map((entries || []).map(function (entry) {
+      return [entry.barIndex, entry];
+    }));
+
+    return slots.map(function (slot) {
+      var harmonySymbol = slot.harmonySymbol || slot.symbol;
+      var baseSymbol = stripSlashBassSymbol(harmonySymbol);
+      var barIndex = Math.floor((slot.startBeat || 0) / BAR_BEATS);
+      var bass = byBar.get(barIndex) || null;
+      var symbol = bass ? baseSymbol + "/" + bass.name : harmonySymbol;
+      var chord = parseChord(symbol);
+      return Object.assign({}, slot, {
+        harmonySymbol: harmonySymbol,
+        harmonyChord: parseChord(harmonySymbol),
+        symbol: chord.symbol,
+        rawSymbol: chord.symbol,
+        chord: chord,
+        bassNote: bass
+      });
+    });
+  }
+
+  function stripSlashBassSymbol(symbol) {
+    var value = String(symbol || "");
+    var slashIndex = value.lastIndexOf("/");
+    if (slashIndex > 0 && /^[A-Ga-g]/.test(value.slice(slashIndex + 1))) {
+      return value.slice(0, slashIndex);
+    }
+    return value;
   }
 
   function applyParsedEdits() {
@@ -643,6 +865,9 @@
           symbol: chord.symbol,
           rawSymbol: chordInput.value,
           chord: chord,
+          harmonySymbol: chord.symbol,
+          harmonyChord: chord,
+          bassNote: null,
           duration: Math.round(duration * 1000) / 1000,
           startBeat: startBeat
         });
@@ -650,7 +875,8 @@
       });
 
       pushHistory("应用识别修改前");
-      state.slots = nextSlots;
+      state.basslineEntries = readBasslineEntries();
+      state.slots = applyBasslineToSlots(nextSlots, state.basslineEntries);
       state.lockedChoices = {};
       state.arrangementChoices = {};
       state.expandedHarmonyIndex = 0;
@@ -666,7 +892,7 @@
 
   function updateProgressionTextFromSlots() {
     els.progressionInput.value = state.slots.map(function (slot) {
-      return slot.symbol + ":" + formatBeats(slot.duration);
+      return (slot.harmonySymbol || slot.symbol) + ":" + formatBeats(slot.duration);
     }).join(" | ");
   }
 
@@ -1969,7 +2195,9 @@
           symbol: item.symbol,
           duration: item.duration,
           originIndex: index,
-          sourceSymbol: slot.symbol
+          sourceSymbol: slot.symbol,
+          harmonySymbol: slot.harmonySymbol || slot.symbol,
+          bassNote: slot.bassNote || null
         });
       });
     });
@@ -2018,13 +2246,15 @@
       var li = document.createElement("li");
       li.dataset.slotRow = String(index);
       var degree = degreeForChord(slot.chord, context);
+      var bassText = slot.bassNote ? '<span class="bass-pill" title="该小节 Bassline 总时值最长音高">Bass ' + escapeHtml(slot.bassNote.displayName || slot.bassNote.name) + '</span>' : "";
       li.innerHTML = [
         '<span class="parsed-number">位置 ' + (index + 1) + '</span>',
         '<div class="parsed-editor">',
-        '<label class="parsed-field"><span>和弦</span><input data-slot-edit="symbol" aria-label="位置 ' + (index + 1) + ' 和弦" value="' + escapeHtml(slot.symbol) + '"></label>',
+        '<label class="parsed-field"><span>和弦</span><input data-slot-edit="symbol" aria-label="位置 ' + (index + 1) + ' 和弦" value="' + escapeHtml(slot.harmonySymbol || slot.symbol) + '"></label>',
         '<label class="parsed-field"><span>时值</span><input data-slot-edit="duration" aria-label="位置 ' + (index + 1) + ' 时值" type="number" min="0.25" step="0.25" value="' + escapeHtml(formatBeats(slot.duration)) + '"></label>',
         '</div>',
-        '<span class="degree-pill ' + (degree.inMode ? "" : "outside") + '" title="' + escapeHtml(degree.hint) + '">' + escapeHtml(degree.roman) + '</span>'
+        '<span class="degree-pill ' + (degree.inMode ? "" : "outside") + '" title="' + escapeHtml(degree.hint) + '">' + escapeHtml(degree.roman) + '</span>',
+        bassText
       ].join("");
       els.parsedList.appendChild(li);
     });
@@ -2596,6 +2826,45 @@
     handleMidiFile(file);
   }
 
+  async function handleBasslineMidiUpload(event) {
+    var file = event.target.files && event.target.files[0];
+    if (!file) {
+      return;
+    }
+    handleBasslineMidiFile(file);
+  }
+
+  async function handleBasslineMidiFile(file) {
+    try {
+      var buffer = await file.arrayBuffer();
+      var midi = parseMidi(buffer);
+      var entries = aggregateBasslineNotes(midi.notes);
+      if (!entries.length) {
+        throw new Error("Bass MIDI 中没有可用音符。");
+      }
+
+      pushHistory("导入 Bassline 前");
+      state.basslineName = file.name;
+      state.basslineMidiNotes = midi.notes;
+      state.basslineEntries = entries;
+      state.basslineSourceActive = true;
+      state.textDirty = false;
+      els.bassMidiFileName.textContent = file.name;
+      els.basslineInput.value = basslineEntriesToText(entries);
+      if (state.slots.length) {
+        state.slots = applyBasslineToSlots(state.slots, entries);
+        state.lockedChoices = {};
+        state.arrangementChoices = {};
+        recomputeAndRender();
+      } else if (els.progressionInput.value.trim()) {
+        analyzeFromText(false);
+      }
+      setStatus("已导入 Bassline：" + entries.length + " 小节，按小节最长总时值取音高");
+    } catch (error) {
+      setStatus(error.message || "Bassline MIDI 解析失败");
+    }
+  }
+
   async function handleMidiFile(file) {
     try {
       var buffer = await file.arrayBuffer();
@@ -2617,12 +2886,13 @@
       els.progressionInput.value = imported.slots.map(function (slot) {
         return slot.symbol + ":" + formatBeats(slot.duration);
       }).join(" | ");
-      state.slots = imported.slots;
+      state.basslineEntries = readBasslineEntries();
+      state.slots = applyBasslineToSlots(imported.slots, state.basslineEntries);
       state.lockedChoices = {};
       state.arrangementChoices = {};
       state.expandedHarmonyIndex = 0;
       recomputeAndRender();
-      setStatus("已从 MIDI 识别 " + imported.slots.length + " 个和弦，调式估计 " + describeContext(getHarmonicContext()));
+      setStatus("已从 MIDI 识别 " + imported.slots.length + " 个和弦" + (state.basslineEntries.length ? "，已结合 Bassline" : "") + "，调式估计 " + describeContext(getHarmonicContext()));
     } catch (error) {
       setStatus(error.message || "MIDI 解析失败");
     }
@@ -2849,6 +3119,9 @@
         symbol: chord.symbol,
         rawSymbol: item.symbol,
         chord: chord,
+        harmonySymbol: chord.symbol,
+        harmonyChord: chord,
+        bassNote: null,
         duration: Math.round(duration * 4) / 4,
         startBeat: item.startBeat
       };
@@ -2857,6 +3130,24 @@
     return {
       slots: mergeSimilarSlots(slots)
     };
+  }
+
+  function getPlaybackLayer() {
+    return els.playbackLayerSelect.value || "merged";
+  }
+
+  function playbackLayerLabel(layer) {
+    if (layer === "bass") {
+      return "只 Bassline";
+    }
+    if (layer === "chords") {
+      return "只和弦";
+    }
+    return "合并";
+  }
+
+  function hasBassline() {
+    return state.basslineEntries && state.basslineEntries.length > 0;
   }
 
   function detectChordFromMidiNotes(notes) {
@@ -2936,7 +3227,8 @@
 
   function playOriginal() {
     stopPlayback();
-    if (state.midiSourceActive && state.midiNotes && state.midiNotes.length) {
+    var layer = getPlaybackLayer();
+    if (state.midiSourceActive && state.midiNotes && state.midiNotes.length && layer === "merged" && !hasBassline()) {
       playMidiNotes(state.midiNotes);
       setStatus("播放原始 MIDI");
       return;
@@ -2947,20 +3239,23 @@
     playChordEvents(state.slots.map(function (slot, index) {
       return {
         symbol: slot.symbol,
+        harmonySymbol: slot.harmonySymbol || slot.symbol,
+        bassNote: slot.bassNote || null,
         duration: slot.duration,
         originIndex: index
       };
-    }));
-    setStatus("播放原始走向");
+    }), layer);
+    setStatus("播放原始走向 · " + playbackLayerLabel(layer));
   }
 
   function playOptimized() {
     stopPlayback();
+    var layer = getPlaybackLayer();
     if (state.textDirty || !state.slots.length) {
       analyzeFromText(false);
     }
-    playChordEvents(computeArrangedEvents());
-    setStatus(Object.keys(state.arrangementChoices).length ? "播放优化+编配走向" : "播放优化走向");
+    playChordEvents(computeArrangedEvents(), layer);
+    setStatus((Object.keys(state.arrangementChoices).length ? "播放优化+编配走向" : "播放优化走向") + " · " + playbackLayerLabel(layer));
   }
 
   function playHarmonySlotPreview(index) {
@@ -2973,6 +3268,8 @@
     playChordEvents(output.map(function (item) {
       return {
         symbol: item.symbol,
+        harmonySymbol: state.slots[index].harmonySymbol || state.slots[index].symbol,
+        bassNote: state.slots[index].bassNote || null,
         duration: item.duration,
         originIndex: index
       };
@@ -2989,6 +3286,8 @@
     playChordEvents(option.output.map(function (item) {
       return {
         symbol: item.symbol,
+        harmonySymbol: state.slots[index] ? state.slots[index].harmonySymbol || state.slots[index].symbol : item.symbol,
+        bassNote: state.slots[index] ? state.slots[index].bassNote || null : null,
         duration: item.duration,
         originIndex: index
       };
@@ -3005,6 +3304,8 @@
     stopPlayback();
     playChordEvents([{
       symbol: option.outputSymbol || base.symbol,
+      harmonySymbol: base.harmonySymbol || base.symbol,
+      bassNote: base.bassNote || null,
       duration: base.duration,
       originIndex: base.originIndex,
       arrangeIndex: index,
@@ -3034,12 +3335,39 @@
     return state.audioContext;
   }
 
-  function playChordEvents(events) {
+  function chordSymbolForPlayback(item, layer) {
+    if (layer === "chords" || item.bassNote) {
+      return stripSlashBassSymbol(item.symbol);
+    }
+    return item.symbol;
+  }
+
+  function scheduleBassForEvent(ctx, item, chord, when, durationSec) {
+    var bassMidi = null;
+    if (item.bassNote && typeof item.bassNote.midi === "number") {
+      bassMidi = normalizeBassMidi(item.bassNote.pc);
+      while (bassMidi > item.bassNote.midi && bassMidi - 12 >= 24) {
+        bassMidi -= 12;
+      }
+      while (bassMidi < 28 && bassMidi + 12 <= 48) {
+        bassMidi += 12;
+      }
+    } else if (chord.bass) {
+      var bassName = chord.bass.replace(/♭/g, "b").replace(/♯/g, "#");
+      bassMidi = normalizeBassMidi(typeof NOTE_TO_PC[bassName] === "number" ? NOTE_TO_PC[bassName] : chord.rootPc);
+    } else {
+      bassMidi = normalizeBassMidi(chord.rootPc);
+    }
+    scheduleNote(ctx, bassMidi, when, durationSec, 0.16);
+  }
+
+  function playChordEvents(events, layer) {
     if (!events.length) {
       setStatus("没有可播放内容");
       return;
     }
 
+    var playbackLayer = layer || getPlaybackLayer();
     var ctx = ensureAudioContext();
     var beatSec = 60 / getTempo();
     var totalBeats = events.reduce(function (sum, item) {
@@ -3050,12 +3378,18 @@
     scheduleMetronome(ctx, cursor, totalBeats, beatSec);
 
     events.forEach(function (item) {
-      var chord = parseChord(item.symbol);
-      var voicing = chordToMidiVoicing(chord, item.voicingMode);
       var durationSec = Math.max(0.12, item.duration * beatSec * 0.92);
-      voicing.forEach(function (midi, noteIndex) {
-        scheduleNote(ctx, midi, cursor + noteIndex * 0.008, durationSec, 0.11);
-      });
+      var chord = parseChord(chordSymbolForPlayback(item, playbackLayer));
+      if (playbackLayer !== "bass") {
+        var hasExternalBass = Boolean(item.bassNote && playbackLayer === "merged");
+        var voicing = chordToMidiVoicing(chord, item.voicingMode, !hasExternalBass);
+        voicing.forEach(function (midi, noteIndex) {
+          scheduleNote(ctx, midi, cursor + noteIndex * 0.008, durationSec, 0.11);
+        });
+      }
+      if (playbackLayer !== "chords") {
+        scheduleBassForEvent(ctx, item, chord, cursor, durationSec);
+      }
       scheduleHighlight(item.originIndex, (cursor - ctx.currentTime) * 1000, durationSec * 1000, item.arrangeIndex);
       cursor += item.duration * beatSec;
     });
@@ -3215,7 +3549,7 @@
     });
   }
 
-  function chordToMidiVoicing(chord, voicingMode) {
+  function chordToMidiVoicing(chord, voicingMode, includeBass) {
     var bassPc = chord.rootPc;
     if (chord.bass) {
       var bassName = chord.bass.replace(/♭/g, "b").replace(/♯/g, "#");
@@ -3227,9 +3561,10 @@
     var mode = voicingMode || "closed";
 
     if (mode === "quartal") {
-      return [bass].concat(normalizeUpperVoicing([0, 5, 10, 15, 19].map(function (interval) {
+      var quartal = normalizeUpperVoicing([0, 5, 10, 15, 19].map(function (interval) {
         return 60 + chord.rootPc + interval;
-      })).slice(0, 5));
+      })).slice(0, 5);
+      return includeBass === false ? quartal : [bass].concat(quartal);
     }
 
     var tones = normalizeUpperVoicing(chord.intervals.map(function (interval) {
@@ -3259,7 +3594,7 @@
       tones = tones.slice(0, 5);
     }
 
-    return Array.from(new Set([bass].concat(tones))).sort(function (a, b) {
+    return Array.from(new Set(includeBass === false ? tones : [bass].concat(tones))).sort(function (a, b) {
       return a - b;
     });
   }
@@ -3367,6 +3702,7 @@
       var weight = Math.max(0.75, Math.min(4, slot.duration || 1));
       var rel = mod(chord.rootPc - root, 12);
       var scaleIndex = def.intervals.indexOf(rel);
+      var bassPc = bassPcForSlot(slot);
 
       if (scaleIndex >= 0) {
         score += 4 * weight;
@@ -3374,6 +3710,18 @@
         score += qualityMatchScore(chord, expected) * weight;
       } else {
         score -= 1.6 * weight;
+      }
+
+      if (typeof bassPc === "number") {
+        var bassRel = mod(bassPc - root, 12);
+        if (scale.includes(bassPc)) {
+          score += 1.4 * weight;
+        } else {
+          score -= 0.8 * weight;
+        }
+        if (bassRel === 0 || bassRel === 7) {
+          score += 0.9 * weight;
+        }
       }
 
       if (chord.rootPc === root) {
@@ -3446,6 +3794,10 @@
     var roots = slots.map(function (slot) {
       return mod(slot.chord.rootPc - root, 12);
     });
+    var bassRoots = slots.map(function (slot) {
+      var bassPc = bassPcForSlot(slot);
+      return typeof bassPc === "number" ? mod(bassPc - root, 12) : null;
+    });
     var bonus = 0;
     var isMajorMode = ["ionian", "lydian"].includes(mode);
     var isMinorMode = ["aeolian", "harmonicMinor", "dorian", "phrygian"].includes(mode);
@@ -3459,6 +3811,12 @@
       }
       if (roots[i] === 5 && roots[i + 1] === 0) {
         bonus += 2.5;
+      }
+      if (bassRoots[i] === 7 && bassRoots[i + 1] === 0) {
+        bonus += 1.4;
+      }
+      if (bassRoots[i] === 5 && bassRoots[i + 1] === 0) {
+        bonus += 0.9;
       }
     }
 
@@ -3478,6 +3836,19 @@
     }
 
     return bonus;
+  }
+
+  function bassPcForSlot(slot) {
+    if (slot.bassNote && typeof slot.bassNote.pc === "number") {
+      return slot.bassNote.pc;
+    }
+    if (slot.chord && slot.chord.bass) {
+      var bassName = slot.chord.bass.replace(/♭/g, "b").replace(/♯/g, "#");
+      if (typeof NOTE_TO_PC[bassName] === "number") {
+        return NOTE_TO_PC[bassName];
+      }
+    }
+    return null;
   }
 
   function degreeForChord(chord, context) {
@@ -3673,9 +4044,22 @@
     }).join(" - ");
   }
 
+  function basslineEntriesToText(entries) {
+    return (entries || []).map(function (entry) {
+      return (entry.displayName || entry.name) + ":" + formatBeats(BAR_BEATS);
+    }).join(" | ");
+  }
+
   function formatBeats(value) {
     var rounded = Math.round(value * 100) / 100;
     return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/0+$/, "").replace(/\.$/, "");
+  }
+
+  function midiToNoteName(midi, preferFlats) {
+    var value = Math.round(midi);
+    var pc = mod(value, 12);
+    var octave = Math.floor(value / 12) - 1;
+    return pcToName(pc, preferFlats) + octave;
   }
 
   function pcToName(pc, preferFlats) {
